@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All You Can — Design System</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* === COLORS === */
+    --color-bg: #F5F2EC;           /* Warm off-white / parchment */
+    --color-surface: #EDE9E0;      /* Subtle card surface */
+    --color-text-primary: #1A1915; /* Near-black, warm */
+    --color-text-secondary: #5C5850; /* Muted warm gray */
+    --color-text-muted: #9C988E;   /* Tertiary text */
+    --color-accent: #2D2B26;       /* Dark accent */
+    --color-cta: #1A1915;          /* CTA button background */
+    --color-cta-text: #F5F2EC;     /* CTA text (inverted) */
+    --color-border: #D8D3C8;       /* Soft border */
+    --color-overlay: rgba(26,25,21,0.06);
+
+    /* === TYPOGRAPHY === */
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body: 'DM Sans', sans-serif;
+
+    /* === SPACING === */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 40px;
+    --space-2xl: 64px;
+    --space-3xl: 96px;
+    --space-4xl: 128px;
+
+    /* === BORDER RADIUS === */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --radius-pill: 100px;
+
+    /* === SHADOWS === */
+    --shadow-sm: 0 1px 3px rgba(26,25,21,0.08);
+    --shadow-md: 0 4px 16px rgba(26,25,21,0.10);
+    --shadow-lg: 0 12px 40px rgba(26,25,21,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── LAYOUT ─────────────────────────────────────────────── */
+  .ds-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: var(--space-3xl) var(--space-xl);
+  }
+
+  .ds-header {
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: var(--space-xl);
+    margin-bottom: var(--space-3xl);
+  }
+
+  .ds-label {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-sm);
+  }
+
+  .ds-section {
+    margin-bottom: var(--space-3xl);
+  }
+
+  .ds-section-title {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-lg);
+    padding-bottom: var(--space-md);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .ds-grid {
+    display: grid;
+    gap: var(--space-lg);
+  }
+
+  .ds-grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .ds-grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .ds-grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .ds-grid-5 { grid-template-columns: repeat(5, 1fr); }
+
+  /* ─── SITE HEADER SPECIMEN ────────────────────────────────── */
+  .site-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-md) var(--space-xl);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+  }
+
+  .site-logo {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  .site-nav-links {
+    display: flex;
+    gap: var(--space-xl);
+    list-style: none;
+  }
+
+  .site-nav-links a {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    letter-spacing: 0.02em;
+  }
+
+  .site-nav-badge {
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--color-accent);
+    color: var(--color-cta-text);
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    letter-spacing: 0.04em;
+  }
+
+  /* ─── COLORS ──────────────────────────────────────────────── */
+  .color-swatch {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .swatch-block {
+    height: 80px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(0,0,0,0.06);
+  }
+
+  .swatch-info {
+    font-size: 12px;
+  }
+
+  .swatch-name {
+    font-weight: 500;
+    color: var(--color-text-primary);
+    margin-bottom: 2px;
+  }
+
+  .swatch-hex {
+    color: var(--color-text-muted);
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+  }
+
+  .swatch-desc {
+    color: var(--color-text-muted);
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
+  /* ─── TYPOGRAPHY ─────────────────────────────────────────── */
+  .type-specimen {
+    padding: var(--space-xl) 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .type-specimen:last-child { border-bottom: none; }
+
+  .type-meta {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-md);
+    margin-bottom: var(--space-sm);
+  }
+
+  .type-role {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    min-width: 140px;
+  }
+
+  .type-specs {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    font-family: 'Courier New', monospace;
+  }
+
+  .type-h1 {
+    font-family: var(--font-display);
+    font-size: 64px;
+    font-weight: 500;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    color: var(--color-text-primary);
+  }
+
+  .type-h2 {
+    font-family: var(--font-display);
+    font-size: 44px;
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    color: var(--color-text-primary);
+  }
+
+  .type-h3 {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    color: var(--color-text-primary);
+  }
+
+  .type-h4 {
+    font-family: var(--font-body);
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--color-text-primary);
+  }
+
+  .type-overline {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  .type-body-lg {
+    font-family: var(--font-body);
+    font-size: 18px;
+    font-weight: 300;
+    line-height: 1.7;
+    color: var(--color-text-secondary);
+  }
+
+  .type-body {
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.6;
+    color: var(--color-text-secondary);
+  }
+
+  .type-caption {
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-text-muted);
+  }
+
+  /* ─── BUTTONS ─────────────────────────────────────────────── */
+  .btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-xl);
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--color-cta);
+    color: var(--color-cta-text);
+    padding: 14px 28px;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+  }
+
+  .btn-primary:hover { opacity: 0.82; }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    color: var(--color-text-primary);
+    padding: 13px 27px;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border: 1.5px solid var(--color-border);
+    cursor: pointer;
+  }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    color: var(--color-text-secondary);
+    padding: 13px 0;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    text-decoration: underline;
+    border: none;
+    cursor: pointer;
+  }
+
+  /* ─── CARDS ───────────────────────────────────────────────── */
+  .card-base {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .card-project {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .card-project-img {
+    width: 100%;
+    height: 220px;
+    background: linear-gradient(135deg, #D4C9B8 0%, #C2B8A8 100%);
+    display: flex;
+    align-items: flex-end;
+    padding: var(--space-lg);
+  }
+
+  .card-project-label {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 500;
+    color: #1A1915;
+    text-shadow: 0 1px 2px rgba(255,255,255,0.3);
+  }
+
+  .card-project-body {
+    padding: var(--space-lg);
+  }
+
+  .card-project-desc {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+  }
+
+  /* Pricing Card */
+  .card-pricing {
+    padding: var(--space-xl);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    background: var(--color-bg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .card-pricing.featured {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-cta-text);
+  }
+
+  .card-pricing.featured .price-amount,
+  .card-pricing.featured .plan-name,
+  .card-pricing.featured .plan-desc,
+  .card-pricing.featured .feature-item {
+    color: rgba(245,242,236,0.85);
+  }
+
+  .plan-name {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+  }
+
+  .price-amount {
+    font-family: var(--font-display);
+    font-size: 42px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    line-height: 1;
+  }
+
+  .price-period {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--color-text-muted);
+  }
+
+  .plan-desc {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+  }
+
+  .feature-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .feature-item {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .feature-item::before {
+    content: '→';
+    opacity: 0.5;
+    flex-shrink: 0;
+  }
+
+  /* Testimonial Card */
+  .card-testimonial {
+    padding: var(--space-xl);
+    background: var(--color-surface);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-border);
+  }
+
+  .testimonial-quote {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-style: italic;
+    line-height: 1.5;
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-lg);
+  }
+
+  .testimonial-author {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+  }
+
+  .author-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--color-border);
+    flex-shrink: 0;
+  }
+
+  .author-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+  }
+
+  .author-company {
+    font-size: 12px;
+    color: var(--color-text-muted);
+  }
+
+  /* Process Card */
+  .card-process {
+    padding: var(--space-xl);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+  }
+
+  .process-number {
+    font-family: var(--font-display);
+    font-size: 56px;
+    font-weight: 400;
+    color: var(--color-border);
+    line-height: 1;
+    margin-bottom: var(--space-md);
+  }
+
+  .process-title {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-sm);
+  }
+
+  .process-desc {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+  }
+
+  /* ─── BADGE / TAG ─────────────────────────────────────────── */
+  .badge-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    padding: var(--space-xl);
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .badge-dark { background: var(--color-accent); color: var(--color-cta-text); }
+  .badge-light { background: transparent; border: 1px solid var(--color-border); color: var(--color-text-secondary); }
+  .badge-muted { background: var(--color-overlay); color: var(--color-text-muted); }
+
+  /* ─── SPACING ─────────────────────────────────────────────── */
+  .spacing-row {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-md);
+    flex-wrap: wrap;
+  }
+
+  .spacing-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .spacing-block {
+    background: var(--color-accent);
+    opacity: 0.15;
+    border-radius: 2px;
+    width: 100%;
+  }
+
+  .spacing-label {
+    font-size: 10px;
+    font-family: 'Courier New', monospace;
+    color: var(--color-text-muted);
+    text-align: center;
+  }
+
+  /* ─── HERO SPECIMEN ───────────────────────────────────────── */
+  .hero-specimen {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-3xl) var(--space-2xl);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-specimen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(180,170,155,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-overline {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-md);
+  }
+
+  .hero-h1 {
+    font-family: var(--font-display);
+    font-size: 56px;
+    font-weight: 500;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    color: var(--color-text-primary);
+    max-width: 640px;
+    margin: 0 auto var(--space-lg);
+  }
+
+  .hero-body {
+    font-family: var(--font-body);
+    font-size: 17px;
+    font-weight: 300;
+    line-height: 1.7;
+    color: var(--color-text-secondary);
+    max-width: 480px;
+    margin: 0 auto var(--space-xl);
+  }
+
+  /* ─── MOTION ──────────────────────────────────────────────── */
+  .motion-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    cursor: pointer;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+  }
+
+  .motion-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .motion-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: var(--space-sm);
+  }
+
+  .motion-desc {
+    font-size: 13px;
+    color: var(--color-text-muted);
+  }
+
+  /* ─── FOOTER STRIP ────────────────────────────────────────── */
+  .footer-spec {
+    background: var(--color-accent);
+    border-radius: var(--radius-xl);
+    padding: var(--space-2xl) var(--space-xl);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-lg);
+  }
+
+  .footer-logo {
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--color-cta-text);
+    opacity: 0.9;
+  }
+
+  .footer-nav {
+    display: flex;
+    gap: var(--space-xl);
+    list-style: none;
+  }
+
+  .footer-nav a {
+    font-size: 12px;
+    color: rgba(245,242,236,0.6);
+    text-decoration: none;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .footer-copy {
+    font-size: 11px;
+    color: rgba(245,242,236,0.4);
+    letter-spacing: 0.06em;
+  }
+
+  /* ─── DS HEADER ───────────────────────────────────────────── */
+  .ds-brand-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-xl);
+    margin-bottom: var(--space-xl);
+  }
+
+  .ds-title-group h1 {
+    font-family: var(--font-display);
+    font-size: 48px;
+    font-weight: 500;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--color-text-primary);
+  }
+
+  .ds-title-group .subtitle {
+    font-size: 14px;
+    color: var(--color-text-muted);
+    margin-top: var(--space-sm);
+  }
+
+  .ds-meta-box {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-md) var(--space-lg);
+    font-size: 12px;
+    color: var(--color-text-muted);
+    line-height: 1.8;
+    font-family: 'Courier New', monospace;
+    min-width: 220px;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--color-border);
+    margin: var(--space-xl) 0;
+  }
+</style>
+</head>
+<body>
+<div class="ds-page">
+
+  <!-- HEADER -->
+  <div class="ds-header">
+    <div class="ds-brand-header">
+      <div class="ds-title-group">
+        <div class="ds-label">Design System</div>
+        <h1>All You Can…</h1>
+        <p class="subtitle">allyoucan.co — Health & Wellness Brand Agency</p>
+      </div>
+      <div class="ds-meta-box">
+        Source: allyoucan.co<br>
+        Built with: Framer<br>
+        Aesthetic: Warm Minimalist / Editorial<br>
+        Theme: Light (Parchment)<br>
+        Extracted: Feb 2026
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ▸ COLOR SYSTEM ─────────────────────────────────────────── -->
+  <div class="ds-section">
+    <div class="ds-section-title">Color System</div>
+    <div class="ds-grid ds-grid-5">
+      <div class="color-swatch">
+        <div class="swatch-block" style="background:#F5F2EC;"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">Background</div>
+          <div class="swatch-hex">#F5F2EC</div>
+          <div class="swatch-desc">Warm parchment / page base</div>
+        </div>
+      </div>
+      <div class="color-swatch">
+        <div class="swatch-block" style="background:#EDE9E0;"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">Surface</div>
+          <div class="swatch-hex">#EDE9E0</div>
+          <div class="swatch-desc">Cards & sections</div>
+        </div>
+      </div>
+      <div class="color-swatch">
+        <div class="swatch-block" style="background:#1A1915;"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">Text Primary</div>
+          <div class="swatch-hex">#1A1915</div>
+          <div class="swatch-desc">Headings, body, CTA bg</div>
+        </div>
+      </div>
+      <div class="color-swatch">
+        <div class="swatch-block" style="background:#5C5850;"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">Text Secondary</div>
+          <div class="swatch-hex">#5C5850</div>
+          <div class="swatch-desc">Body copy, descriptions</div>
+        </div>
+      </div>
+      <div class="color-swatch">
+        <div class="swatch-block" style="background:#D8D3C8;"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">Border</div>
+          <div class="swatch-hex">#D8D3C8</div>
+          <div class="swatch-desc">Dividers, card borders</div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top: var(--space-lg);">
+      <p class="type-caption" style="padding: 12px 16px; background: var(--color-surface); border-radius: var(--radius-md);">
+        <strong>Palette Note:</strong> The site uses an exclusively warm neutral monochromatic palette — no accent colors or hues beyond warm off-blacks, warm whites and parchment tones. This creates a refined, editorial, premium feel. High contrast is achieved through tone, not hue.
+      </p>
+    </div>
+  </div>
+
+
+  <!-- ▸ TYPOGRAPHY ──────────────────────────────────────────── -->
+  <div class="ds-section">
+    <div class="ds-section-title">Typography</div>
+
+    <div style="padding: var(--space-lg) var(--space-xl); background: var(--color-surface); border-radius: var(--radius-lg); margin-bottom: var(--space-lg);">
+      <div style="display: flex; gap: var(--space-2xl); flex-wrap: wrap;">
+        <div>
+          <div class="ds-label">Display / Serif</div>
+          <div style="font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 500; line-height: 1.1; margin-top: 8px;">Playfair Display</div>
+          <div style="font-family: 'Playfair Display', serif; font-size: 14px; color: var(--color-text-muted); margin-top: 4px; font-style: italic;">Aa Bb Cc Dd Ee Ff Gg 0123</div>
+        </div>
+        <div>
+          <div class="ds-label">Body / Sans</div>
+          <div style="font-family: 'DM Sans', sans-serif; font-size: 32px; font-weight: 400; line-height: 1.1; margin-top: 8px;">DM Sans</div>
+          <div style="font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--color-text-muted); margin-top: 4px;">Aa Bb Cc Dd Ee Ff Gg 0123</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="type-specimen">
+      <div class="type-meta">
+        <span class="type-role">Hero / H1</span>
+        <span class="type-specs">Playfair Display · 500 · 64px · ls -0.02em · lh 1.08</span>
+      </div>
+      <div class="type-h1">We transform<br><em>health brands.</em></div>
+    </div>
+
+    <div class="type-specimen">
+      <div class="type-meta">
+        <span class="type-role">Section / H2</span>
+        <span class="type-specs">Playfair Display · 500 · 44px · ls -0.015em · lh 1.1</span>
+      </div>
+      <div class="type-h2">Our process is<br>really simple.</div>
+    </div>
+
+    <div class="type-specimen">
+      <div class="type-meta">
+        <span class="type-role">Card / H3</span>
+        <span class="type-specs">Playfair Display · 500 · 28px · ls -0.01em · lh 1.2</span>
+      </div>
+      <div class="type-h3">Discovery</div>
+    </div>
+
+    <div class="type-specimen">
+      <div class="type-meta">
+        <span class="type-role">Sub-heading / H4</span>
+        <span class="type-specs">DM Sans · 500 · 18px · lh 1.3</span>
+      </div>
+      <div class="type-h4">Strategy · Branding · Design</div>
+    </div>
+
+    <div class="type-specimen">
+      <div class="type-meta">
+        <span class="type-role">Overline</span>
+        <span class="type-specs">DM Sans · 500 · 11px · ls 0.18em · UPPERCASE</span>
+      </div>
+      <div class="type-overline">Booking for Q1 2026</div>
+    </div>
+
+    <div class="type-specimen">
+      <div class="type-meta">
+        <span class="type-role">Body Large</span>
+        <span class="type-specs">DM Sans · 300 · 18px · lh 1.7</span>
+      </div>
+      <div class="type-body-lg">For brands that deserve to stand out with strategic, impactful design. We create identities and digital experiences that connect, engage, and drive results.</div>
+    </div>
+
+    <div class="type-specimen">
+      <div class="type-meta">
+        <span class="type-role">Body Regular</span>
+        <span class="type-specs">DM Sans · 400 · 15px · lh 1.6</span>
+      </div>
+      <div class="type-body">We quickly get aligned on goals, context, and priorities so you can be confident the team is focused on what matters most to your business.</div>
+    </div>
+
+    <div class="type-specimen">
+      <div class="type-meta">
+        <span class="type-role">Caption / Meta</span>
+        <span class="type-specs">DM Sans · 400 · 12px · lh 1.5</span>
+      </div>
+      <div class="type-caption">Limited Capacity of 4 per month · One-Time Payment</div>
+    </div>
+  </div>
+
+
+  <!-- ▸ SPACING ─────────────────────────────────────────────── -->
+  <div class="ds-section">
+    <div class="ds-section-title">Spacing Scale</div>
+    <div class="spacing-row">
+      <div class="spacing-item" style="width: 40px;">
+        <div class="spacing-block" style="height: 4px;"></div>
+        <div class="spacing-label">xs<br>4px</div>
+      </div>
+      <div class="spacing-item" style="width: 52px;">
+        <div class="spacing-block" style="height: 8px;"></div>
+        <div class="spacing-label">sm<br>8px</div>
+      </div>
+      <div class="spacing-item" style="width: 72px;">
+        <div class="spacing-block" style="height: 16px;"></div>
+        <div class="spacing-label">md<br>16px</div>
+      </div>
+      <div class="spacing-item" style="width: 96px;">
+        <div class="spacing-block" style="height: 24px;"></div>
+        <div class="spacing-label">lg<br>24px</div>
+      </div>
+      <div class="spacing-item" style="width: 120px;">
+        <div class="spacing-block" style="height: 40px;"></div>
+        <div class="spacing-label">xl<br>40px</div>
+      </div>
+      <div class="spacing-item" style="width: 140px;">
+        <div class="spacing-block" style="height: 64px;"></div>
+        <div class="spacing-label">2xl<br>64px</div>
+      </div>
+      <div class="spacing-item" style="width: 160px;">
+        <div class="spacing-block" style="height: 96px;"></div>
+        <div class="spacing-label">3xl<br>96px</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ▸ NAVIGATION ─────────────────────────────────────────── -->
+  <div class="ds-section">
+    <div class="ds-section-title">Navigation</div>
+    <nav class="site-nav">
+      <div class="site-logo">All You Can…</div>
+      <ul class="site-nav-links">
+        <li><a href="#">Home</a></li>
+        <li><a href="#">Work</a></li>
+        <li><a href="#">Services</a></li>
+        <li><a href="#">Pricing</a></li>
+      </ul>
+      <div class="site-nav-badge">Booking Q1 2026</div>
+    </nav>
+    <p class="type-caption" style="margin-top: var(--space-md); padding: 0 4px;">Sticky top nav · Transparent/glass feel · Logo in Playfair Display · Badge as pill with dark bg</p>
+  </div>
+
+
+  <!-- ▸ BUTTONS ─────────────────────────────────────────────── -->
+  <div class="ds-section">
+    <div class="ds-section-title">Buttons & CTAs</div>
+    <div class="btn-group">
+      <button class="btn-primary">Let's Chat →</button>
+      <button class="btn-primary">Book a Call</button>
+      <button class="btn-secondary">View Work</button>
+      <button class="btn-ghost">Learn More</button>
+    </div>
+    <div style="margin-top: var(--space-md); padding: var(--space-md) var(--space-lg); background: var(--color-surface); border-radius: var(--radius-md);">
+      <div class="type-caption">
+        <strong>Primary:</strong> Dark bg (#1A1915) · Light text · Pill radius (100px) · UPPERCASE · 13px · ls 0.08em<br>
+        <strong>Secondary:</strong> Transparent bg · Dark border · Same shape<br>
+        <strong>Ghost:</strong> No border · Underline · Muted color<br>
+        <strong>Pattern:</strong> CTA text often uppercase with arrow "→" — minimal, confident
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ▸ BADGES ─────────────────────────────────────────────── -->
+  <div class="ds-section">
+    <div class="ds-section-title">Badges & Labels</div>
+    <div class="badge-group">
+      <span class="badge badge-dark">Strategy</span>
+      <span class="badge badge-dark">Branding</span>
+      <span class="badge badge-dark">Design</span>
+      <span class="badge badge-light">Booking Q1 2026</span>
+      <span class="badge badge-light">On-Demand Service</span>
+      <span class="badge badge-muted">Limited Capacity</span>
+    </div>
+  </div>
+
+
+  <!-- ▸ HERO SPECIMEN ──────────────────────────────────────── -->
+  <div class="ds-section">
+    <div class="ds-section-title">Hero Section Specimen</div>
+    <div class="hero-specimen">
+      <div class="hero-overline">Strategy · Branding · Design</div>
+      <h1 class="hero-h1">We transform health brands from invisible to irresistible.</h1>
+      <p class="hero-body">For brands that deserve to stand out with strategic, impactful design. We create identities and digital experiences that connect and drive results.</p>
+      <button class="btn-primary">Let's Chat →</button>
+    </div>
+  </div>
+
+
+  <!-- ▸ CARD COMPONENTS ────────────────────────────────────── -->
+  <div class="ds-section">
+    <div class="ds-section-title">Card Components</div>
+
+    <!-- Process Cards -->
+    <div class="ds-label" style="margin-bottom: var(--space-md);">Process Cards</div>
+    <div class="ds-grid ds-grid-3" style="margin-bottom: var(--space-xl);">
+      <div class="card-process">
+        <div class="process-number">01</div>
+        <div class="process-title">Discovery</div>
+        <p class="process-desc">We quickly get aligned on goals, context, and priorities so you can be confident the team is focused on what matters most.</p>
+      </div>
+      <div class="card-process">
+        <div class="process-number">02</div>
+        <div class="process-title">Consistent Updates</div>
+        <p class="process-desc">You receive clear design progress twice a week, making it easy to give feedback and see momentum.</p>
+      </div>
+      <div class="card-process">
+        <div class="process-number">03</div>
+        <div class="process-title">Expert Execution</div>
+        <p class="process-desc">A senior designer delivers at pace while Chris provides oversight and direction, giving you both speed and quality.</p>
+      </div>
+    </div>
+
+    <!-- Project Cards -->
+    <div class="ds-label" style="margin-bottom: var(--space-md);">Project / Work Cards</div>
+    <div class="ds-grid ds-grid-2" style="margin-bottom: var(--space-xl);">
+      <div class="card-project">
+        <div class="card-project-img" style="background: linear-gradient(135deg, #BFB49E 0%, #A9A08C 100%);">
+          <span class="card-project-label">FitPak</span>
+        </div>
+        <div class="card-project-body">
+          <p class="card-project-desc">Repositioning a backpack brand to own the premium fitness lifestyle category</p>
+        </div>
+      </div>
+      <div class="card-project">
+        <div class="card-project-img" style="background: linear-gradient(135deg, #C4CABD 0%, #B0B8A9 100%);">
+          <span class="card-project-label">Pulsetto</span>
+        </div>
+        <div class="card-project-body">
+          <p class="card-project-desc">Creating the 'Stress Fitness' category to escape medical device competition</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Testimonial Card -->
+    <div class="ds-label" style="margin-bottom: var(--space-md);">Testimonial Card</div>
+    <div class="card-testimonial" style="max-width: 560px;">
+      <p class="testimonial-quote">"Marc and the team at AYC just get it, on the deepest of levels."</p>
+      <div class="testimonial-author">
+        <div class="author-avatar"></div>
+        <div>
+          <div class="author-name">Dan Morris</div>
+          <div class="author-company">(Shofsky)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ▸ PRICING CARDS ──────────────────────────────────────── -->
+  <div class="ds-section">
+    <div class="ds-section-title">Pricing Cards</div>
+    <div class="ds-grid ds-grid-2">
+      <div class="card-pricing">
+        <div class="plan-name">Audit</div>
+        <div>
+          <span class="price-amount">$3,000</span>
+          <span class="price-period"> /one-time</span>
+        </div>
+        <p class="plan-desc">Get direction and clarity with a multi-point analysis of your current product marketing, and branding efforts.</p>
+        <ul class="feature-list">
+          <li class="feature-item">Delivered in 1 Week</li>
+          <li class="feature-item">Limited Capacity of 4 per month</li>
+          <li class="feature-item">One-Time Payment</li>
+        </ul>
+        <button class="btn-secondary" style="margin-top: var(--space-sm);">Book a Call</button>
+      </div>
+      <div class="card-pricing featured">
+        <div class="plan-name" style="color: rgba(245,242,236,0.9);">Growth</div>
+        <div>
+          <span class="price-amount" style="color: var(--color-cta-text);">$5,500</span>
+          <span class="price-period" style="color: rgba(245,242,236,0.5);"> /per month</span>
+        </div>
+        <p class="plan-desc" style="color: rgba(245,242,236,0.7);">Full support with brand strategy, market positioning, and website design & development.</p>
+        <ul class="feature-list">
+          <li class="feature-item" style="color: rgba(245,242,236,0.7);">On-Demand Service</li>
+          <li class="feature-item" style="color: rgba(245,242,236,0.7);">Full Team Access</li>
+          <li class="feature-item" style="color: rgba(245,242,236,0.7);">Weekly Strategy Calls</li>
+          <li class="feature-item" style="color: rgba(245,242,236,0.7);">Unlimited Slack</li>
+          <li class="feature-item" style="color: rgba(245,242,236,0.7);">Flexible, Pause or Cancel</li>
+        </ul>
+        <button class="btn-primary" style="margin-top: var(--space-sm); background: var(--color-bg); color: var(--color-accent);">Book a Call</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ▸ MOTION ─────────────────────────────────────────────── -->
+  <div class="ds-section">
+    <div class="ds-section-title">Motion & Interaction</div>
+    <div class="ds-grid ds-grid-3">
+      <div class="motion-card">
+        <div class="motion-title">Hover Lift</div>
+        <p class="motion-desc">Cards lift on hover with translateY(-4px). Hover over this card.</p>
+      </div>
+      <div class="motion-card">
+        <div class="motion-title">Easing: Spring</div>
+        <p class="motion-desc">cubic-bezier(0.34, 1.56, 0.64, 1) — slight overshoot, organic feel.</p>
+      </div>
+      <div class="motion-card">
+        <div class="motion-title">Duration: 300ms</div>
+        <p class="motion-desc">Fast enough to feel snappy. Slow enough to perceive quality.</p>
+      </div>
+    </div>
+    <div style="margin-top: var(--space-md); padding: var(--space-md) var(--space-lg); background: var(--color-surface); border-radius: var(--radius-md);">
+      <div class="type-caption">
+        <strong>Site Motion Patterns:</strong> Horizontal marquee/ticker for social proof · Scroll-triggered fade-ins · Card hover lifts · CTA button opacity fade on hover · Parallax image sections (Framer built-in)
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ▸ FOOTER ─────────────────────────────────────────────── -->
+  <div class="ds-section">
+    <div class="ds-section-title">Footer Specimen</div>
+    <div class="footer-spec">
+      <div class="footer-logo">All You Can…</div>
+      <ul class="footer-nav">
+        <li><a href="#">Home</a></li>
+        <li><a href="#">Work</a></li>
+        <li><a href="#">Services</a></li>
+        <li><a href="#">Pricing</a></li>
+      </ul>
+      <div class="footer-copy">All Rights Reserved.</div>
+    </div>
+    <p class="type-caption" style="margin-top: var(--space-md);">Footer uses the dark (#1A1915) variant · Logo in Playfair · Nav links muted white · Minimal, clean strip</p>
+  </div>
+
+
+  <!-- ▸ BORDER RADIUS ──────────────────────────────────────── -->
+  <div class="ds-section">
+    <div class="ds-section-title">Border Radius</div>
+    <div class="ds-grid ds-grid-5">
+      <div style="text-align: center;">
+        <div style="width: 64px; height: 64px; background: var(--color-accent); border-radius: 4px; margin: 0 auto var(--space-sm);"></div>
+        <div class="swatch-name">sm</div>
+        <div class="swatch-hex">4px</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="width: 64px; height: 64px; background: var(--color-accent); border-radius: 8px; margin: 0 auto var(--space-sm);"></div>
+        <div class="swatch-name">md</div>
+        <div class="swatch-hex">8px</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="width: 64px; height: 64px; background: var(--color-accent); border-radius: 16px; margin: 0 auto var(--space-sm);"></div>
+        <div class="swatch-name">lg</div>
+        <div class="swatch-hex">16px</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="width: 64px; height: 64px; background: var(--color-accent); border-radius: 24px; margin: 0 auto var(--space-sm);"></div>
+        <div class="swatch-name">xl</div>
+        <div class="swatch-hex">24px</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="width: 64px; height: 64px; background: var(--color-accent); border-radius: 100px; margin: 0 auto var(--space-sm);"></div>
+        <div class="swatch-name">pill</div>
+        <div class="swatch-hex">100px</div>
+      </div>
+    </div>
+    <p class="type-caption" style="margin-top: var(--space-lg);">Main usage: Cards use <strong>lg (16px)</strong> and <strong>xl (24px)</strong>. Buttons and badges always use <strong>pill (100px)</strong>. Images and full-bleed sections use <strong>xl (24px)</strong>.</p>
+  </div>
+
+
+  <!-- ▸ DESIGN PRINCIPLES ──────────────────────────────────── -->
+  <div class="ds-section">
+    <div class="ds-section-title">Design Language & Principles</div>
+    <div class="ds-grid ds-grid-2">
+      <div class="card-process">
+        <div class="process-title">Warm Minimalism</div>
+        <p class="process-desc">The site avoids cool grays and blues entirely. All surfaces, texts and borders are warm-tinted. This creates a human, approachable premium feel — clinical warmth.</p>
+      </div>
+      <div class="card-process">
+        <div class="process-title">Editorial Rhythm</div>
+        <p class="process-desc">Large serif headings contrasted with light-weight sans-serif body text. Multi-line headline splits ("Our process / is really simple.") create visual cadence.</p>
+      </div>
+      <div class="card-process">
+        <div class="process-title">Confident Typography</div>
+        <p class="process-desc">H1 is 56–64px. Generous white space. Italic is used selectively in serif for emotional resonance. No decorative icons — text is the design element.</p>
+      </div>
+      <div class="card-process">
+        <div class="process-title">Social Proof Density</div>
+        <p class="process-desc">Client logos in horizontal scrolling ticker. 6 testimonials in carousel. Pricing backed by satisfaction guarantee. Trust is architected systematically.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

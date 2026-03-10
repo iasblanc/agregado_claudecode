@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Custo/km — TAC</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F2EC; --surf:#EDE9E0; --surf2:#E6E1D6;
+  --ink:#1A1915; --ink2:#5C5850; --muted:#9C988E;
+  --accent:#2D2B26; --border:#D8D3C8; --border2:#C8C2B4;
+  --serif:'Playfair Display',Georgia,serif;
+  --sans:'DM Sans',sans-serif; --mono:'Courier New',monospace;
+  --r-sm:4px; --r-md:8px; --r-lg:16px; --r-xl:24px; --r-pill:100px;
+  --sh-sm:0 1px 3px rgba(26,25,21,.07); --sh-md:0 4px 16px rgba(26,25,21,.09); --sh-lg:0 12px 40px rgba(26,25,21,.11);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+
+/* NAV */
+.top-nav{position:sticky;top:0;z-index:100;background:rgba(245,242,236,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:58px}
+.nav-logo{font-family:var(--serif);font-size:15px;font-weight:400;letter-spacing:-.01em}
+.nav-logo em{font-style:italic;color:var(--ink2)}
+.plan-tabs{display:flex;list-style:none;gap:0}
+.plan-tab{padding:8px 22px;cursor:pointer;font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid transparent;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--sans);white-space:nowrap}
+.plan-tab:hover{color:var(--ink2)}
+.plan-tab.active{color:var(--ink);border-bottom-color:var(--ink)}
+.nav-badge{font-size:10px;font-weight:500;background:var(--accent);color:var(--bg);padding:5px 14px;border-radius:var(--r-pill);letter-spacing:.06em;text-transform:uppercase}
+
+/* LAYOUT */
+.page-wrap{max-width:1060px;margin:0 auto;padding:52px 40px 88px}
+
+/* HERO */
+.hero-strip{padding:52px 0 44px;border-bottom:1px solid var(--border);margin-bottom:48px}
+.hero-overline{font-size:10px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+.hero-h1{font-family:var(--serif);font-size:50px;font-weight:500;line-height:1.08;letter-spacing:-.02em;color:var(--ink);max-width:600px;margin-bottom:16px}
+.hero-h1 em{font-style:italic}
+.hero-sub{font-size:15px;font-weight:300;line-height:1.75;color:var(--ink2);max-width:460px}
+
+/* PANELS */
+.panel{display:none}.panel.active{display:block}
+
+/* SECTION LABEL */
+.sec-label{font-size:10px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin:36px 0 16px;display:flex;align-items:center;gap:14px}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* VEHICLE TABS */
+.vtab-wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-bottom:8px}
+.vtab{border:1.5px solid var(--border);border-radius:var(--r-lg);padding:14px 8px;text-align:center;cursor:pointer;background:var(--bg);transition:all .25s cubic-bezier(.34,1.56,.64,1)}
+.vtab:hover{border-color:var(--ink2);transform:translateY(-2px);box-shadow:var(--sh-sm)}
+.vtab.sel{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.vtab.sel .vtab-kml{color:rgba(245,242,236,.45)}
+.vtab-ico{font-size:20px;margin-bottom:5px}
+.vtab-lbl{font-size:11px;font-weight:500}
+.vtab-kml{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* IMPL */
+.impl-wrap{background:var(--surf);border:1px solid var(--border);border-radius:var(--r-xl);padding:20px;margin-bottom:4px}
+.impl-intro{font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+.impl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.impl-card{border:1.5px solid var(--border);border-radius:var(--r-lg);padding:12px 14px;cursor:pointer;transition:all .22s cubic-bezier(.34,1.56,.64,1);background:var(--bg)}
+.impl-card:hover{transform:translateY(-2px);box-shadow:var(--sh-sm);border-color:var(--ink2)}
+.impl-card.isel{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.impl-card.isel .impl-dim,.impl-card.isel .impl-val{color:rgba(245,242,236,.45)}
+.impl-name{font-size:12px;font-weight:600;font-family:var(--serif)}
+.impl-dim{font-size:10px;color:var(--muted);margin-top:3px}
+.impl-val{font-size:10px;color:var(--muted);margin-top:3px}
+
+/* CONTRATANTE */
+.contr-toggle{margin-top:12px;display:flex;align-items:flex-start;gap:10px;padding:12px 16px;background:rgba(26,25,21,.03);border:1px solid var(--border);border-radius:var(--r-lg);cursor:pointer;font-size:13px;color:var(--ink2);line-height:1.5;user-select:none}
+.contr-toggle input{margin-top:2px;accent-color:var(--ink);width:14px;height:14px;flex-shrink:0;cursor:pointer}
+.contr-toggle strong{color:var(--ink);font-weight:600}
+
+/* INPUTS */
+.input-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(198px,1fr));gap:14px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:5px}
+.field input,.field select{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-md);color:var(--ink);padding:9px 12px;font-size:14px;font-family:var(--mono);outline:none;transition:border .15s,box-shadow .15s;width:100%}
+.field input:focus,.field select:focus{border-color:var(--ink);box-shadow:0 0 0 3px rgba(26,25,21,.06)}
+.field select{font-family:var(--sans);cursor:pointer;font-size:13px}
+.field .hint{font-size:10px;color:var(--muted);line-height:1.4}
+
+/* ADM BOX */
+.adm-box{background:var(--surf);border:1px solid var(--border);border-radius:var(--r-xl);padding:22px;margin-top:20px}
+.adm-box-title{font-family:var(--serif);font-size:15px;font-weight:500;color:var(--ink);margin-bottom:6px}
+.adm-box-sub{font-size:11px;color:var(--muted);margin-bottom:14px}
+.adm-row{display:flex;gap:12px;flex-wrap:wrap}
+.adm-row .field{flex:1;min-width:130px}
+
+/* TOGGLE */
+.toggle-row{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:12px;color:var(--muted);font-weight:500;margin-top:14px;user-select:none;letter-spacing:.02em}
+.toggle-row input{accent-color:var(--ink);width:14px;height:14px;cursor:pointer}
+.adv-panel{display:none;margin-top:12px}.adv-panel.open{display:block}
+
+/* CALC BUTTON */
+.btn-calc{display:inline-flex;align-items:center;gap:10px;background:var(--ink);color:var(--bg);padding:14px 32px;border-radius:var(--r-pill);font-family:var(--sans);font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;border:none;cursor:pointer;margin-top:28px;transition:opacity .2s}
+.btn-calc:hover{opacity:.8}
+
+/* RESULT BOX */
+.result-box{background:var(--surf);border:1px solid var(--border);border-radius:var(--r-xl);padding:36px;margin-top:32px;display:none}
+.result-box.show{display:block}
+.result-hero{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:32px;padding-bottom:28px;border-bottom:1px solid var(--border)}
+.rlabel{font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.rbig{font-family:var(--serif);font-size:66px;font-weight:500;line-height:1;color:var(--ink);letter-spacing:-.02em}
+.runit{font-family:var(--serif);font-size:20px;color:var(--muted);margin-left:4px}
+.result-right{text-align:right}
+.result-right p{font-size:10px;color:var(--muted);font-weight:500;letter-spacing:.08em;margin-top:7px;text-transform:uppercase}
+.result-right strong{font-family:var(--mono);font-size:14px;color:var(--ink);display:block;margin-top:1px}
+
+/* BREAKDOWN */
+.breakdown{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px}
+.bdc{background:var(--bg);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px}
+.bdc-title{font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.bdr{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(26,25,21,.04);font-size:12px}
+.rn{color:var(--ink2)}.rv{font-family:var(--mono);font-size:11px;color:var(--ink)}
+.bdtot{display:flex;justify-content:space-between;padding:10px 0 0;font-weight:600;font-size:13px;border-top:1px solid var(--border);margin-top:6px}
+.bdtot .rv{font-family:var(--mono)}
+
+/* FRETE BOX */
+.frete-box{background:var(--ink);border-radius:var(--r-xl);padding:28px 32px;margin-bottom:0}
+.frete-title{font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:rgba(245,242,236,.4);margin-bottom:20px}
+.frete-grid{display:flex;gap:28px;flex-wrap:wrap}
+.fitem .fl{font-size:10px;color:rgba(245,242,236,.42);text-transform:uppercase;letter-spacing:.08em}
+.fitem .fv{font-family:var(--serif);font-size:28px;font-weight:500;color:var(--bg);line-height:1.1;margin-top:3px}
+.fitem .fu{font-size:10px;color:rgba(245,242,236,.38);margin-top:1px}
+.fitem.hl .fv{font-size:38px}
+
+/* PERCURSO */
+.perc-section{border-top:1px solid rgba(245,242,236,.1);padding-top:24px;margin-top:26px}
+.perc-title{font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:rgba(245,242,236,.4);margin-bottom:16px}
+.perc-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.perc-row .field{flex:1;min-width:110px}
+.perc-row .field label{color:rgba(245,242,236,.38)}
+.perc-row .field input,.perc-row .field select{background:rgba(245,242,236,.06);border-color:rgba(245,242,236,.1);color:var(--bg)}
+.perc-row .field input::placeholder{color:rgba(245,242,236,.25)}
+.perc-row .field input:focus,.perc-row .field select:focus{border-color:rgba(245,242,236,.35);box-shadow:none}
+.perc-row .field select option{background:var(--accent)}
+.btn-perc{display:inline-flex;align-items:center;background:rgba(245,242,236,.09);color:var(--bg);padding:9px 18px;border-radius:var(--r-pill);font-family:var(--sans);font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;border:1.5px solid rgba(245,242,236,.12);cursor:pointer;transition:all .2s;white-space:nowrap}
+.btn-perc:hover{background:rgba(245,242,236,.16)}
+.pr-result{background:rgba(245,242,236,.05);border:1px solid rgba(245,242,236,.09);border-radius:var(--r-lg);padding:16px 18px;margin-top:16px;display:none}
+.pr-result.show{display:block}
+.pr-label{font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(245,242,236,.38);margin-bottom:12px}
+.pr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:12px}
+.prl{font-size:10px;color:rgba(245,242,236,.38);text-transform:uppercase;letter-spacing:.06em}
+.prv{font-family:var(--mono);font-size:13px;color:var(--bg);font-weight:600;margin-top:2px}
+.pr-item.hl .prv{font-family:var(--serif);font-size:18px;font-weight:500}
+
+/* NOTICE */
+.notice{background:rgba(26,25,21,.04);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 16px;font-size:11px;color:var(--muted);margin-top:20px;line-height:1.6}
+.notice strong{color:var(--ink2)}
+
+/* TOOLTIP */
+.tt{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:var(--border);color:var(--muted);font-size:8px;cursor:help;font-weight:600;position:relative;flex-shrink:0}
+.tt:hover::after{content:attr(data-tip);position:absolute;left:16px;top:50%;transform:translateY(-50%);background:var(--ink);color:var(--bg);font-size:10px;font-weight:400;padding:5px 10px;border-radius:var(--r-md);white-space:nowrap;z-index:200;pointer-events:none;font-family:var(--sans);letter-spacing:0;text-transform:none}
+
+/* FOOTER */
+.footer{background:var(--ink);border-radius:var(--r-xl);padding:30px 40px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-top:64px}
+.footer-logo{font-family:var(--serif);font-size:18px;color:var(--bg);opacity:.9;font-style:italic}
+.footer-copy{font-size:10px;color:rgba(245,242,236,.32);letter-spacing:.08em;text-transform:uppercase}
+
+@media(max-width:700px){
+  .top-nav{padding:0 16px}.page-wrap{padding:28px 16px 60px}
+  .hero-h1{font-size:36px}.rbig{font-size:44px!important}
+  .breakdown{grid-template-columns:1fr}.frete-grid{gap:18px}
+  .plan-tabs{display:none}.vtab-wrap{grid-template-columns:repeat(3,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="top-nav">
+  <div class="nav-logo">TAC <em>Calculadora</em></div>
+  <ul class="plan-tabs">
+    <li><button class="plan-tab active" onclick="showPlan('f',this)">Gratuita</button></li>
+    <li><button class="plan-tab" onclick="showPlan('p',this)">Profissional</button></li>
+    <li><button class="plan-tab" onclick="showPlan('fu',this)">Completa</button></li>
+  </ul>
+  <div class="nav-badge">TAC · Frete</div>
+</nav>
+
+<div class="page-wrap">
+
+<!-- HERO -->
+<div class="hero-strip">
+  <div class="hero-overline">Transportador Autônomo de Cargas · Caminhoneiro Agregado</div>
+  <h1 class="hero-h1">Calcule seu custo<br>por km <em>com precisão.</em></h1>
+  <p class="hero-sub">Composição completa de custos fixos e variáveis para formação do frete ideal. Escolha a versão conforme sua necessidade.</p>
+</div>
+
+<!-- FREE -->
+<div id="pnl-f" class="panel active">
+  <div class="sec-label">1 · Tipo de veículo</div>
+  <div class="vtab-wrap" id="vt-f"></div>
+  <div id="is-f" style="display:none">
+    <div class="sec-label">2 · Implemento / Carreta</div>
+    <div class="impl-wrap">
+      <div class="impl-intro">Selecione o equipamento acoplado</div>
+      <div class="impl-grid" id="ig-f"></div>
+    </div>
+    <label class="contr-toggle"><input type="checkbox" id="f-cont"><span>Carreta/implemento é do <strong>contratante</strong> — excluir todos os custos do reboque do cálculo</span></label>
+  </div>
+  <div class="sec-label">Dados da operação</div>
+  <div class="input-grid">
+    <div class="field"><label>Diesel (R$/litro)</label><input type="number" id="f-diesel" value="5.80" step="0.05"><span class="hint">Média nacional: R$ 5,80</span></div>
+    <div class="field"><label>Km rodados por mês</label><input type="number" id="f-km" value="8200" step="100"></div>
+    <div class="field"><label>Distância média/viagem (km)</label><input type="number" id="f-dist" value="500" step="50"><span class="hint">Usado para ADM e margem</span></div>
+  </div>
+  <div class="adm-box">
+    <div class="adm-box-title">ADM e Margem de Lucro</div>
+    <div class="adm-box-sub">Deixe em branco para cálculo automático pela distância média da viagem.</div>
+    <div class="adm-row">
+      <div class="field"><label>ADM (%)</label><input type="number" id="f-adm" placeholder="Auto" step="0.1" min="0" max="50"></div>
+      <div class="field"><label>Lucro (%)</label><input type="number" id="f-lucro" placeholder="Auto" step="0.1" min="0" max="80"></div>
+    </div>
+  </div>
+  <label class="toggle-row"><input type="checkbox" id="f-ct" onchange="toggleAdv('f-adv',this)">Informar consumo real do meu veículo</label>
+  <div class="adv-panel" id="f-adv">
+    <div class="input-grid" style="margin-top:10px">
+      <div class="field"><label>Consumo real (km/litro)</label><input type="number" id="f-kml-c" step="0.1" min="0.5" placeholder="Ex: 3.2"></div>
+    </div>
+  </div>
+  <button class="btn-calc" onclick="calc('f')">Calcular custo por km →</button>
+  <div class="result-box" id="res-f">
+    <div class="result-hero">
+      <div><div class="rlabel">Custo total por km rodado</div><div class="rbig"><span id="rf-tot">—</span><span class="runit">R$/km</span></div></div>
+      <div class="result-right"><p>Custo fixo mensal</p><strong id="rf-fmen">—</strong><p>Custo variável/km</p><strong id="rf-vkm">—</strong></div>
+    </div>
+    <div class="breakdown">
+      <div class="bdc">
+        <div class="bdc-title">Custos Fixos ÷ km/mês</div>
+        <div class="bdr"><span class="rn">Reposição do veículo</span><span class="rv" id="rf-rep">—</span></div>
+        <div class="bdr"><span class="rn">Salário + encargos</span><span class="rv" id="rf-sal">—</span></div>
+        <div class="bdr"><span class="rn">Remuneração capital</span><span class="rv" id="rf-cap">—</span></div>
+        <div class="bdr"><span class="rn">Seguro + IPVA + licença</span><span class="rv" id="rf-seg">—</span></div>
+        <div class="bdr"><span class="rn">Rastreador + GRIS + AET</span><span class="rv" id="rf-rastr">—</span></div>
+        <div class="bdtot"><span>Total fixo/km</span><span class="rv" id="rf-ft">—</span></div>
+      </div>
+      <div class="bdc">
+        <div class="bdc-title">Custos Variáveis / km</div>
+        <div class="bdr"><span class="rn">Combustível</span><span class="rv" id="rf-comb">—</span></div>
+        <div class="bdr"><span class="rn">Manutenção</span><span class="rv" id="rf-man">—</span></div>
+        <div class="bdr"><span class="rn">Pneus</span><span class="rv" id="rf-pneu">—</span></div>
+        <div class="bdr"><span class="rn">Arla 32 + Lubrificantes</span><span class="rv" id="rf-arla">—</span></div>
+        <div class="bdr"><span class="rn">Rem. Variável <span class="tt" data-tip="Diária do motorista + PPQ">i</span></span><span class="rv" id="rf-rv">—</span></div>
+        <div class="bdtot"><span>Total variável/km</span><span class="rv" id="rf-vt">—</span></div>
+      </div>
+    </div>
+    <div class="frete-box">
+      <div class="frete-title">Sugestão de Frete</div>
+      <div class="frete-grid">
+        <div class="fitem hl"><div class="fl">Frete sugerido/km</div><div class="fv" id="rf-frete">—</div><div class="fu">R$/km</div></div>
+        <div class="fitem"><div class="fl">ADM aplicada</div><div class="fv" id="rf-admr">—</div><div class="fu">%</div></div>
+        <div class="fitem"><div class="fl">Margem de lucro</div><div class="fv" id="rf-lucr">—</div><div class="fu">%</div></div>
+      </div>
+      <div class="perc-section">
+        <div class="perc-title">Calcular frete para um percurso específico</div>
+        <div class="perc-row">
+          <div class="field"><label>Distância (km)</label><input type="number" id="f-pkm" placeholder="Ex: 850" step="10"></div>
+          <div class="field"><label>Tipo</label><select id="f-ptipo"><option value="1">Somente ida</option><option value="rt">Round trip (ida e volta)</option></select></div>
+          <div class="field"><label>Pedágio (R$)</label><input type="number" id="f-pped" value="0" step="10"></div>
+          <button class="btn-perc" onclick="calcPerc('f')">Calcular →</button>
+        </div>
+        <div class="pr-result" id="f-pr">
+          <div class="pr-label">Resultado do Percurso</div>
+          <div class="pr-grid">
+            <div class="pr-item"><div class="prl">Km total</div><div class="prv" id="f-pr-km">—</div></div>
+            <div class="pr-item"><div class="prl">Custo operacional</div><div class="prv" id="f-pr-op">—</div></div>
+            <div class="pr-item"><div class="prl">Pedágio</div><div class="prv" id="f-pr-ped">—</div></div>
+            <div class="pr-item hl"><div class="prl">Frete total sugerido</div><div class="prv" id="f-pr-tot">—</div></div>
+            <div class="pr-item"><div class="prl">Frete/km efetivo</div><div class="prv" id="f-pr-fkm">—</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="notice"><strong>Atenção:</strong> Versão gratuita com benchmarks de mercado. Para maior precisão use as versões Profissional ou Completa.</div>
+  </div>
+</div>
+
+<!-- PRO -->
+<div id="pnl-p" class="panel">
+  <div class="sec-label">1 · Tipo de veículo</div>
+  <div class="vtab-wrap" id="vt-p"></div>
+  <div id="is-p" style="display:none">
+    <div class="sec-label">2 · Implemento / Carreta</div>
+    <div class="impl-wrap">
+      <div class="impl-intro">Selecione o equipamento acoplado</div>
+      <div class="impl-grid" id="ig-p"></div>
+    </div>
+    <label class="contr-toggle"><input type="checkbox" id="p-cont"><span>Carreta/implemento é do <strong>contratante</strong> — excluir todos os custos do reboque do cálculo</span></label>
+  </div>
+  <div class="sec-label">Veículo e operação</div>
+  <div class="input-grid">
+    <div class="field"><label>Diesel (R$/litro)</label><input type="number" id="p-diesel" value="5.80" step="0.05"></div>
+    <div class="field"><label>Consumo real (km/litro)</label><input type="number" id="p-kml" value="3.5" step="0.1"></div>
+    <div class="field"><label>Km rodados por mês</label><input type="number" id="p-km" value="8200" step="100"></div>
+    <div class="field"><label>Distância média/viagem (km)</label><input type="number" id="p-dist" value="500" step="50"></div>
+    <div class="field"><label>Valor cavalo mecânico (R$)</label><input type="number" id="p-vcav" value="300000" step="5000"></div>
+    <div class="field"><label>Valor implemento/carreta (R$)</label><input type="number" id="p-vimpl" value="110000" step="5000"></div>
+  </div>
+  <div class="sec-label">Pessoal</div>
+  <div class="input-grid">
+    <div class="field"><label>Salário do motorista (R$)</label><input type="number" id="p-sal" value="2810" step="50"></div>
+    <div class="field"><label>Encargos sociais (%)</label><input type="number" id="p-enc" value="99.18" step="0.1"></div>
+    <div class="field"><label>Dias trabalhados/mês</label><input type="number" id="p-dias" value="24" step="1"></div>
+    <div class="field"><label>Rem. Variável (R$/km) <span class="tt" data-tip="Diária do motorista + PPQ. Benchmark: R$ 0,40/km">i</span></label><input type="number" id="p-rv" value="0.40" step="0.01"></div>
+  </div>
+  <div class="sec-label">Custos variáveis</div>
+  <div class="input-grid">
+    <div class="field"><label>Manutenção por km (R$) <span class="tt" data-tip="Peças + mão de obra. Benchmark: R$ 0,48–1,20/km">i</span></label><input type="number" id="p-manut" value="0.65" step="0.01"></div>
+    <div class="field"><label>Preço pneu novo (R$)</label><input type="number" id="p-ppneu" value="2300" step="50"></div>
+    <div class="field"><label>Qtde pneus (total)</label><input type="number" id="p-qpneu" value="7" step="1"></div>
+    <div class="field"><label>Vida útil pneu (km)</label><input type="number" id="p-vpneu" value="275000" step="5000"></div>
+  </div>
+  <div class="adm-box">
+    <div class="adm-box-title">ADM e Margem de Lucro</div>
+    <div class="adm-box-sub">Deixe em branco para cálculo automático pela distância média.</div>
+    <div class="adm-row">
+      <div class="field"><label>ADM (%)</label><input type="number" id="p-adm" placeholder="Auto" step="0.1"></div>
+      <div class="field"><label>Lucro (%)</label><input type="number" id="p-lucro" placeholder="Auto" step="0.1"></div>
+    </div>
+  </div>
+  <button class="btn-calc" onclick="calc('p')">Calcular custo por km →</button>
+  <div class="result-box" id="res-p">
+    <div class="result-hero">
+      <div><div class="rlabel">Custo total por km rodado</div><div class="rbig"><span id="rp-tot">—</span><span class="runit">R$/km</span></div></div>
+      <div class="result-right"><p>Custo fixo mensal</p><strong id="rp-fmen">—</strong><p>Custo variável/km</p><strong id="rp-vkm">—</strong></div>
+    </div>
+    <div class="breakdown">
+      <div class="bdc">
+        <div class="bdc-title">Custos Fixos ÷ km/mês</div>
+        <div class="bdr"><span class="rn">Remuneração capital (3,5% a.a.)</span><span class="rv" id="rp-cap">—</span></div>
+        <div class="bdr"><span class="rn">Reposição veículo + implemento</span><span class="rv" id="rp-rep">—</span></div>
+        <div class="bdr"><span class="rn">Salário + encargos</span><span class="rv" id="rp-sal">—</span></div>
+        <div class="bdr"><span class="rn">Salário oficina</span><span class="rv" id="rp-ofic">—</span></div>
+        <div class="bdr"><span class="rn">Seguro casco (0,5% a.a.)</span><span class="rv" id="rp-seg">—</span></div>
+        <div class="bdr"><span class="rn">IPVA + Licença + Tacógrafo</span><span class="rv" id="rp-lic">—</span></div>
+        <div class="bdr"><span class="rn">Rastreador + GRIS + AET</span><span class="rv" id="rp-rastr">—</span></div>
+        <div class="bdtot"><span>Total fixo/km</span><span class="rv" id="rp-ft">—</span></div>
+      </div>
+      <div class="bdc">
+        <div class="bdc-title">Custos Variáveis / km</div>
+        <div class="bdr"><span class="rn">Combustível</span><span class="rv" id="rp-comb">—</span></div>
+        <div class="bdr"><span class="rn">Arla 32</span><span class="rv" id="rp-arla">—</span></div>
+        <div class="bdr"><span class="rn">Lubrificantes</span><span class="rv" id="rp-lubr">—</span></div>
+        <div class="bdr"><span class="rn">Lavagem</span><span class="rv" id="rp-lav">—</span></div>
+        <div class="bdr"><span class="rn">Manutenção</span><span class="rv" id="rp-man">—</span></div>
+        <div class="bdr"><span class="rn">Pneus</span><span class="rv" id="rp-pneu">—</span></div>
+        <div class="bdr"><span class="rn">Rem. Variável <span class="tt" data-tip="Diária + PPQ">i</span></span><span class="rv" id="rp-rv">—</span></div>
+        <div class="bdtot"><span>Total variável/km</span><span class="rv" id="rp-vt">—</span></div>
+      </div>
+    </div>
+    <div class="frete-box">
+      <div class="frete-title">Sugestão de Frete</div>
+      <div class="frete-grid">
+        <div class="fitem hl"><div class="fl">Frete sugerido/km</div><div class="fv" id="rp-frete">—</div><div class="fu">R$/km</div></div>
+        <div class="fitem"><div class="fl">ADM aplicada</div><div class="fv" id="rp-admr">—</div><div class="fu">%</div></div>
+        <div class="fitem"><div class="fl">Margem de lucro</div><div class="fv" id="rp-lucr">—</div><div class="fu">%</div></div>
+        <div class="fitem"><div class="fl">Custo mensal total</div><div class="fv" id="rp-men">—</div><div class="fu">R$/mês</div></div>
+      </div>
+      <div class="perc-section">
+        <div class="perc-title">Calcular frete para um percurso específico</div>
+        <div class="perc-row">
+          <div class="field"><label>Distância (km)</label><input type="number" id="p-pkm" placeholder="Ex: 850" step="10"></div>
+          <div class="field"><label>Tipo</label><select id="p-ptipo"><option value="1">Somente ida</option><option value="rt">Round trip</option></select></div>
+          <div class="field"><label>Pedágio (R$)</label><input type="number" id="p-pped" value="0" step="10"></div>
+          <div class="field"><label>Seguro carga (% NF)</label><input type="number" id="p-pseg" value="0" step="0.01" placeholder="Ex: 0.28"></div>
+          <div class="field"><label>Valor da NF (R$)</label><input type="number" id="p-pnf" value="0" step="1000"></div>
+          <button class="btn-perc" onclick="calcPerc('p')">Calcular →</button>
+        </div>
+        <div class="pr-result" id="p-pr">
+          <div class="pr-label">Resultado do Percurso</div>
+          <div class="pr-grid">
+            <div class="pr-item"><div class="prl">Km total</div><div class="prv" id="p-pr-km">—</div></div>
+            <div class="pr-item"><div class="prl">Custo operacional</div><div class="prv" id="p-pr-op">—</div></div>
+            <div class="pr-item"><div class="prl">Pedágio</div><div class="prv" id="p-pr-ped">—</div></div>
+            <div class="pr-item"><div class="prl">Seguro carga</div><div class="prv" id="p-pr-seg">—</div></div>
+            <div class="pr-item hl"><div class="prl">Frete total sugerido</div><div class="prv" id="p-pr-tot">—</div></div>
+            <div class="pr-item"><div class="prl">Frete/km efetivo</div><div class="prv" id="p-pr-fkm">—</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FULL -->
+<div id="pnl-fu" class="panel">
+  <div class="sec-label">1 · Tipo de veículo</div>
+  <div class="vtab-wrap" id="vt-fu"></div>
+  <div id="is-fu" style="display:none">
+    <div class="sec-label">2 · Implemento / Carreta</div>
+    <div class="impl-wrap">
+      <div class="impl-intro">Selecione o equipamento acoplado</div>
+      <div class="impl-grid" id="ig-fu"></div>
+    </div>
+    <label class="contr-toggle"><input type="checkbox" id="fu-cont"><span>Carreta/implemento é do <strong>contratante</strong> — excluir todos os custos do reboque do cálculo</span></label>
+  </div>
+  <div class="sec-label">Parâmetros técnicos</div>
+  <div class="input-grid">
+    <div class="field"><label>Diesel S-10 (R$/L)</label><input type="number" id="fu-diesel" value="5.80" step="0.05"></div>
+    <div class="field"><label>Arla 32 (R$/L)</label><input type="number" id="fu-arla" value="1.52" step="0.05"></div>
+    <div class="field"><label>Consumo (km/litro)</label><input type="number" id="fu-kml" value="3.5" step="0.1"></div>
+    <div class="field"><label>Km por mês</label><input type="number" id="fu-km" value="10000" step="100"></div>
+    <div class="field"><label>Distância média/viagem (km)</label><input type="number" id="fu-dist" value="500" step="50"></div>
+    <div class="field"><label>Velocidade média (km/h)</label><input type="number" id="fu-vel" value="61" step="1"></div>
+  </div>
+  <div class="sec-label">Valor do conjunto</div>
+  <div class="input-grid">
+    <div class="field"><label>Valor cavalo mecânico (R$)</label><input type="number" id="fu-vcav" value="620000" step="5000"></div>
+    <div class="field"><label>Valor semi-reboque (R$)</label><input type="number" id="fu-vreb" value="200000" step="5000"></div>
+    <div class="field"><label>Vida útil cavalo (meses)</label><input type="number" id="fu-vidc" value="96" step="6"></div>
+    <div class="field"><label>Vida útil reboque (meses)</label><input type="number" id="fu-vidr" value="100" step="6"></div>
+    <div class="field"><label>Taxa reposição cavalo (%)</label><input type="number" id="fu-rpc" value="60" step="1"></div>
+    <div class="field"><label>Taxa reposição reboque (%)</label><input type="number" id="fu-rpr" value="73.44" step="1"></div>
+    <div class="field"><label>Taxa remun. capital (% a.a.)</label><input type="number" id="fu-txcap" value="3.5" step="0.1"></div>
+  </div>
+  <div class="sec-label">Pessoal</div>
+  <div class="input-grid">
+    <div class="field"><label>Salário motorista (R$)</label><input type="number" id="fu-salm" value="2810.06" step="50"></div>
+    <div class="field"><label>Salário mecânico (R$)</label><input type="number" id="fu-salmec" value="1951.78" step="50"></div>
+    <div class="field"><label>PLR (R$)</label><input type="number" id="fu-plr" value="1497.68" step="50"></div>
+    <div class="field"><label>Encargos sociais (%)</label><input type="number" id="fu-enc" value="99.18" step="0.1"></div>
+    <div class="field"><label>Veículos por mecânico</label><input type="number" id="fu-vmec" value="3" step="1"></div>
+    <div class="field"><label>Dias trabalhados/mês</label><input type="number" id="fu-dias" value="24" step="1"></div>
+    <div class="field"><label>Horas/dia</label><input type="number" id="fu-horas" value="9.5" step="0.5"></div>
+    <div class="field"><label>PPQ (R$/km) <span class="tt" data-tip="Programa de Produtividade e Qualidade">i</span></label><input type="number" id="fu-ppq" value="0.12" step="0.01"></div>
+  </div>
+  <div class="sec-label">Pneus</div>
+  <div class="input-grid">
+    <div class="field"><label>Qtde pneus cavalo</label><input type="number" id="fu-pc" value="11" step="1"></div>
+    <div class="field"><label>Qtde pneus reboque</label><input type="number" id="fu-pr" value="13" step="1"></div>
+    <div class="field"><label>Preço pneu novo (R$)</label><input type="number" id="fu-ppn" value="2300" step="50"></div>
+    <div class="field"><label>Preço recapagem (R$)</label><input type="number" id="fu-prec" value="650" step="50"></div>
+    <div class="field"><label>Qtde recapagens/pneu</label><input type="number" id="fu-qrec" value="2" step="1"></div>
+    <div class="field"><label>Vida útil pneu (km)</label><input type="number" id="fu-vpn" value="275000" step="5000"></div>
+    <div class="field"><label>Coef. perda pneu novo</label><input type="number" id="fu-coepn" value="0.07" step="0.01"></div>
+  </div>
+  <div class="sec-label">Lubrificantes</div>
+  <div class="input-grid">
+    <div class="field"><label>Cap. óleo cárter (L)</label><input type="number" id="fu-carter" value="35" step="1"></div>
+    <div class="field"><label>Reposição cárter entre trocas (L)</label><input type="number" id="fu-rcar" value="9" step="1"></div>
+    <div class="field"><label>Km troca de óleo</label><input type="number" id="fu-kmoleo" value="30000" step="1000"></div>
+    <div class="field"><label>Cap. câmbio+dif+direção (L)</label><input type="number" id="fu-cdif" value="47.2" step="0.5"></div>
+    <div class="field"><label>Km troca diferencial</label><input type="number" id="fu-kmdif" value="53000" step="1000"></div>
+    <div class="field"><label>Preço óleo cárter (R$/L)</label><input type="number" id="fu-ocarter" value="16" step="0.5"></div>
+    <div class="field"><label>Preço óleo câmbio/dif (R$/L)</label><input type="number" id="fu-odif" value="20.23" step="0.5"></div>
+  </div>
+  <div class="sec-label">Licenciamento e Seguro</div>
+  <div class="input-grid">
+    <div class="field"><label>IPVA (% s/ veículo)</label><input type="number" id="fu-ipva" value="1.5" step="0.1"></div>
+    <div class="field"><label>Licenciamento (R$/ano)</label><input type="number" id="fu-lic" value="69.12" step="1"></div>
+    <div class="field"><label>Vistoria tacógrafo (R$/ano)</label><input type="number" id="fu-taco" value="170" step="10"></div>
+    <div class="field"><label>DPVAT (R$/ano)</label><input type="number" id="fu-dpvat" value="110.38" step="1"></div>
+    <div class="field"><label>Prêmio IS cavalo (% a.a.)</label><input type="number" id="fu-secc" value="0.5" step="0.05"></div>
+    <div class="field"><label>Prêmio IS reboque (% a.a.)</label><input type="number" id="fu-secr" value="0.5" step="0.05"></div>
+    <div class="field"><label>IOF sobre seguros (%)</label><input type="number" id="fu-iof" value="7.38" step="0.1"></div>
+  </div>
+  <div class="sec-label">Outros custos fixos mensais</div>
+  <div class="input-grid">
+    <div class="field"><label>GRIS / mês (R$)</label><input type="number" id="fu-gris" value="22.50" step="5"></div>
+    <div class="field"><label>Rastreador manutenção/mês (R$)</label><input type="number" id="fu-rastr" value="100" step="10"></div>
+    <div class="field"><label>AET / mês (R$) <span class="tt" data-tip="Autorização Especial de Trânsito">i</span></label><input type="number" id="fu-aet" value="0" step="5"></div>
+    <div class="field"><label>Cintas de amarração (R$/mês)</label><input type="number" id="fu-cintas" value="256.67" step="10"></div>
+    <div class="field"><label>Lavagem do veículo (R$)</label><input type="number" id="fu-lav" value="290" step="10"></div>
+    <div class="field"><label>Km entre lavagens</label><input type="number" id="fu-kmlav" value="15000" step="1000"></div>
+  </div>
+  <div class="adm-box">
+    <div class="adm-box-title">ADM e Margem de Lucro</div>
+    <div class="adm-box-sub">Deixe em branco para cálculo automático pela distância média.</div>
+    <div class="adm-row">
+      <div class="field"><label>ADM (%)</label><input type="number" id="fu-adm" placeholder="Auto" step="0.1"></div>
+      <div class="field"><label>Lucro (%)</label><input type="number" id="fu-lucro" placeholder="Auto" step="0.1"></div>
+    </div>
+  </div>
+  <button class="btn-calc" onclick="calc('fu')">Calcular custo completo →</button>
+  <div class="result-box" id="res-fu">
+    <div class="result-hero">
+      <div><div class="rlabel">Custo total por km rodado</div><div class="rbig"><span id="rfu-tot">—</span><span class="runit">R$/km</span></div></div>
+      <div class="result-right"><p>Custo fixo mensal</p><strong id="rfu-fmen">—</strong><p>Custo variável/km</p><strong id="rfu-vkm">—</strong></div>
+    </div>
+    <div class="breakdown">
+      <div class="bdc">
+        <div class="bdc-title">Custos Fixos Mensais</div>
+        <div class="bdr"><span class="rn">a · Remuneração capital</span><span class="rv" id="rfu-a">—</span></div>
+        <div class="bdr"><span class="rn">b · Salário motorista</span><span class="rv" id="rfu-b">—</span></div>
+        <div class="bdr"><span class="rn">c · Salário oficina</span><span class="rv" id="rfu-c">—</span></div>
+        <div class="bdr"><span class="rn">d · Reposição cavalo</span><span class="rv" id="rfu-d">—</span></div>
+        <div class="bdr"><span class="rn">e · Reposição reboque</span><span class="rv" id="rfu-e">—</span></div>
+        <div class="bdr"><span class="rn">f · Licenciamento + tacógrafo</span><span class="rv" id="rfu-f">—</span></div>
+        <div class="bdr"><span class="rn">g · Seguro (casco + IOF)</span><span class="rv" id="rfu-g">—</span></div>
+        <div class="bdr"><span class="rn">i · AET</span><span class="rv" id="rfu-i">—</span></div>
+        <div class="bdr"><span class="rn">j · GRIS</span><span class="rv" id="rfu-j">—</span></div>
+        <div class="bdr"><span class="rn">n · Cintas de amarração</span><span class="rv" id="rfu-n">—</span></div>
+        <div class="bdr"><span class="rn">o · Rastreador</span><span class="rv" id="rfu-o">—</span></div>
+        <div class="bdtot"><span>Total mensal</span><span class="rv" id="rfu-ftm">—</span></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:7px;letter-spacing:.1em;text-transform:uppercase">÷ km/mês = fixo/km</div>
+        <div style="font-family:var(--mono);color:var(--ink);font-size:14px;font-weight:600;margin-top:3px" id="rfu-fkm">—</div>
+      </div>
+      <div class="bdc">
+        <div class="bdc-title">Custos Variáveis / km</div>
+        <div class="bdr"><span class="rn">a · Manutenção</span><span class="rv" id="rfu-va">—</span></div>
+        <div class="bdr"><span class="rn">b · Combustível</span><span class="rv" id="rfu-vb">—</span></div>
+        <div class="bdr"><span class="rn">c · Arla 32</span><span class="rv" id="rfu-vc">—</span></div>
+        <div class="bdr"><span class="rn">d · Lubrificantes</span><span class="rv" id="rfu-vd">—</span></div>
+        <div class="bdr"><span class="rn">e · Lavagem</span><span class="rv" id="rfu-ve">—</span></div>
+        <div class="bdr"><span class="rn">f · Pneus</span><span class="rv" id="rfu-vf">—</span></div>
+        <div class="bdr"><span class="rn">Rem. Variável (PPQ+Diária) <span class="tt" data-tip="PPQ + Diária do motorista por km">i</span></span><span class="rv" id="rfu-rv">—</span></div>
+        <div class="bdtot"><span>Total variável/km</span><span class="rv" id="rfu-vt">—</span></div>
+      </div>
+    </div>
+    <div class="frete-box">
+      <div class="frete-title">Frete — Composição completa</div>
+      <div class="frete-grid">
+        <div class="fitem"><div class="fl">Custo base/km</div><div class="fv" id="rfu-ckm">—</div><div class="fu">R$/km</div></div>
+        <div class="fitem"><div class="fl">ADM aplicada</div><div class="fv" id="rfu-admr">—</div><div class="fu">%</div></div>
+        <div class="fitem"><div class="fl">Margem de lucro</div><div class="fv" id="rfu-lucr">—</div><div class="fu">%</div></div>
+        <div class="fitem hl"><div class="fl">Frete sugerido/km</div><div class="fv" id="rfu-frete">—</div><div class="fu">R$/km</div></div>
+        <div class="fitem"><div class="fl">Custo mensal total</div><div class="fv" id="rfu-men">—</div><div class="fu">R$/mês</div></div>
+        <div class="fitem"><div class="fl">Custo hora parada</div><div class="fv" id="rfu-hora">—</div><div class="fu">R$/hora</div></div>
+      </div>
+      <div class="perc-section">
+        <div class="perc-title">Calcular frete para um percurso específico</div>
+        <div class="perc-row">
+          <div class="field"><label>Distância (km)</label><input type="number" id="fu-pkm" placeholder="Ex: 850" step="10"></div>
+          <div class="field"><label>Tipo</label><select id="fu-ptipo"><option value="1">Somente ida</option><option value="rt">Round trip</option></select></div>
+          <div class="field"><label>Pedágio (R$)</label><input type="number" id="fu-pped" value="0" step="10"></div>
+          <div class="field"><label>Seguro carga (% NF)</label><input type="number" id="fu-pseg" value="0" step="0.01" placeholder="Ex: 0.28"></div>
+          <div class="field"><label>Valor da NF (R$)</label><input type="number" id="fu-pnf" value="0" step="1000"></div>
+          <div class="field"><label>Escolta/AET percurso (R$)</label><input type="number" id="fu-pesc" value="0" step="100"></div>
+          <button class="btn-perc" onclick="calcPerc('fu')">Calcular →</button>
+        </div>
+        <div class="pr-result" id="fu-pr">
+          <div class="pr-label">Resultado do Percurso</div>
+          <div class="pr-grid">
+            <div class="pr-item"><div class="prl">Km total</div><div class="prv" id="fu-pr-km">—</div></div>
+            <div class="pr-item"><div class="prl">Custo operacional</div><div class="prv" id="fu-pr-op">—</div></div>
+            <div class="pr-item"><div class="prl">Pedágio</div><div class="prv" id="fu-pr-ped">—</div></div>
+            <div class="pr-item"><div class="prl">Seguro carga</div><div class="prv" id="fu-pr-seg">—</div></div>
+            <div class="pr-item"><div class="prl">Escolta / AET</div><div class="prv" id="fu-pr-esc">—</div></div>
+            <div class="pr-item hl"><div class="prl">Frete total sugerido</div><div class="prv" id="fu-pr-tot">—</div></div>
+            <div class="pr-item"><div class="prl">Frete/km efetivo</div><div class="prv" id="fu-pr-fkm">—</div></div>
+            <div class="pr-item"><div class="prl">Dias estimados</div><div class="prv" id="fu-pr-dias">—</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-logo">TAC Calculadora</div>
+  <div class="footer-copy">Composição de custos · Transportador Autônomo de Cargas</div>
+</footer>
+
+</div>
+
+<script>
+// ─── DADOS ────────────────────────────────────────────────────────────────────
+const VEIC_SIMPLES=[
+  {id:'auto', lbl:'Automóvel',  ico:'🚗', kmL:11.0, km:3000,  vc:60000,  vr:0,      sal:1800, pc:5,  pr:0,  aet:0, vidc:60,  rpc:.5,  vidr:0,   rpr:0    },
+  {id:'van',  lbl:'Van',        ico:'🚐', kmL:8.0,  km:5000,  vc:90000,  vr:0,      sal:1800, pc:4,  pr:0,  aet:0, vidc:60,  rpc:.5,  vidr:0,   rpr:0    },
+  {id:'34',   lbl:'3/4',        ico:'🚚', kmL:7.0,  km:6000,  vc:150000, vr:0,      sal:2200, pc:6,  pr:0,  aet:0, vidc:72,  rpc:.5,  vidr:0,   rpr:0    },
+  {id:'toco', lbl:'Toco',       ico:'🚛', kmL:4.5,  km:7000,  vc:200000, vr:80000,  sal:2810, pc:7,  pr:6,  aet:0, vidc:84,  rpc:.6,  vidr:84,  rpr:.6   },
+  {id:'tk8',  lbl:'Truck 8m',   ico:'🚛', kmL:5.5,  km:8200,  vc:300000, vr:110000, sal:2810, pc:7,  pr:0,  aet:0, vidc:96,  rpc:.6,  vidr:100, rpr:.7344},
+  {id:'tk9',  lbl:'Truck 9m',   ico:'🚛', kmL:5.0,  km:8200,  vc:300000, vr:140000, sal:2810, pc:11, pr:0,  aet:0, vidc:96,  rpc:.6,  vidr:100, rpr:.7344},
+];
+const CAVALOS=[
+  {id:'c4x2', lbl:'Cavalo 4x2', ico:'🚜', sal:2810},
+  {id:'c6x2', lbl:'Cavalo 6x2', ico:'🚜', sal:2810},
+  {id:'c6x4', lbl:'Cavalo 6x4', ico:'🚜', sal:3000},
+];
+const IMPL={
+  c4x2:[
+    {id:'cs12',lbl:'Carga Seca 12m', dim:'12m · 25,5t', vc:620000,vr:200000,km:10000,kmL:3.3, pc:7, pr:13,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.8062 },
+    {id:'pr12',lbl:'Prancha 12m',    dim:'12m · 22,5t', vc:620000,vr:380000,km:10000,kmL:2.8, pc:7, pr:13,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.9862 },
+  ],
+  c6x2:[
+    {id:'cs15',lbl:'Carga Seca 15m', dim:'15m · 30,5t', vc:700000,vr:200000,km:10000,kmL:3.0, pc:11,pr:13,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.8862 },
+    {id:'pr15',lbl:'Prancha 15m',    dim:'15m · 26,3t', vc:700000,vr:380000,km:10000,kmL:2.7, pc:11,pr:13,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.057  },
+    {id:'at23',lbl:'Automotiva 23m', dim:'23m · 24,8t', vc:700000,vr:400000,km:10000,kmL:2.7, pc:11,pr:13,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.077  },
+    {id:'cg23',lbl:'Cegonha 23m',    dim:'23m · 24,8t', vc:700000,vr:400000,km:10000,kmL:2.7, pc:11,pr:13,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.077  },
+  ],
+  c6x4:[
+    {id:'pr17',lbl:'Prancha 17m',  dim:'17m · 39,8t', vc:740000,vr:450000,km:10000,kmL:2.5,pc:11,pr:17,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.167},
+    {id:'pr19',lbl:'Prancha 19m',  dim:'19m · 39,8t', vc:740000,vr:480000,km:10000,kmL:2.5,pc:11,pr:17,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.197},
+    {id:'bt24',lbl:'Bi-Trem 24m',  dim:'24m · 36,8t', vc:740000,vr:320000,km:10000,kmL:2.5,pc:11,pr:25,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.037},
+    {id:'rt27',lbl:'Rodotrem 27m', dim:'27m · 53,8t', vc:740000,vr:320000,km:10000,kmL:2.5,pc:11,pr:25,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.037},
+  ],
+};
+const ADM_TBL=[
+  {km:10,a:.0943,l:.350},{km:50,a:.0644,l:.350},{km:100,a:.040,l:.350},
+  {km:200,a:.0392,l:.3465},{km:300,a:.0384,l:.343},{km:400,a:.0376,l:.3396},
+  {km:500,a:.0369,l:.3362},{km:600,a:.0362,l:.3328},{km:700,a:.0354,l:.3295},
+  {km:800,a:.0347,l:.3262},{km:900,a:.034,l:.323},{km:1000,a:.0333,l:.3197},
+  {km:1200,a:.032,l:.3134},{km:1500,a:.0301,l:.3041},{km:2000,a:.029,l:.2987},
+  {km:4000,a:.026,l:.280},
+];
+const K={enc:.9918,iof:.0738,ipva:.015,lic:69.12,taco:170,dpvat:110.38,salmec:1951.78,plr:1497.68,txrc:.6,txrr:.7344,txcap:.035,ppn:2300,recap:2,recapp:650,vpn:275000,pnperda:.07,kmoleo:30000,carter:35,rcar:9,kmdif:53000,cdif:47.2,ocarter:16,odif:20.23,arlar:.06493,arlap:1.52,lav:290,kmlav:15000,gris:22.5,rastr:100,aet:0,cintas:256.67,ppq:.12,dias:24,horas:9.5,vel:61,vmec:3};
+
+// State
+const S={f:{v:null,i:null,custo:0,frete:0},p:{v:null,i:null,custo:0,frete:0},fu:{v:null,i:null,custo:0,frete:0}};
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+const fmt=(v,d=2)=>isNaN(v)||v===null?'—':v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+function sv(id,t){const e=$(id);if(e)e.textContent=t}
+function gv(id,def=0){const v=parseFloat($(id)&&$(id).value);return isNaN(v)?def:v}
+
+function admLucro(dist,aOv,lOv){
+  let a,l,prev=ADM_TBL[0];
+  dist=Math.max(dist,1);
+  for(let r of ADM_TBL){if(dist<=r.km){const t=r.km===prev.km?1:(dist-prev.km)/(r.km-prev.km);a=prev.a+t*(r.a-prev.a);l=prev.l+t*(r.l-prev.l);break}prev=r}
+  if(a===undefined){a=ADM_TBL[ADM_TBL.length-1].a;l=ADM_TBL[ADM_TBL.length-1].l}
+  if(aOv!==''&&!isNaN(parseFloat(aOv)))a=parseFloat(aOv)/100;
+  if(lOv!==''&&!isNaN(parseFloat(lOv)))l=parseFloat(lOv)/100;
+  return{a,l};
+}
+
+// ─── UI ──────────────────────────────────────────────────────────────────────
+function showPlan(p,btn){
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.ptab').forEach(x=>x.className='ptab');
+  $('pnl-'+p).classList.add('active');
+  btn.classList.add({f:'af',p:'ap',fu:'afu'}[p]);
+}
+function toggleAdv(id,chk){$(id).classList.toggle('open',chk.checked)}
+
+function buildTabs(pl){
+  const cont=$('vt-'+pl),sc={f:'sf',p:'sp',fu:'sfu'}[pl],ic={f:'if',p:'ip',fu:'ifu'}[pl];
+  cont.innerHTML='';
+  VEIC_SIMPLES.forEach((v,i)=>{
+    const d=document.createElement('div');
+    d.className='vtab';
+    d.innerHTML=`<div class="vico">${v.ico}</div><div class="vlbl">${v.lbl}</div><div class="vkml">${v.kmL} km/L</div>`;
+    d.onclick=()=>{clrTabs(pl);d.classList.add(sc);S[pl].v=v;S[pl].i=null;$('is-'+pl).style.display='none';applyV(pl,v)};
+    cont.appendChild(d);
+    if(i===4){d.classList.add(sc);S[pl].v=v;applyV(pl,v)}
+  });
+  CAVALOS.forEach(c=>{
+    const d=document.createElement('div');
+    d.className='vtab';
+    d.innerHTML=`<div class="vico">${c.ico}</div><div class="vlbl">${c.lbl}</div><div class="vkml">+ implemento ▾</div>`;
+    d.onclick=()=>{clrTabs(pl);d.classList.add(sc);S[pl].v=c;S[pl].i=null;buildImpl(pl,c.id);$('is-'+pl).style.display='block'};
+    cont.appendChild(d);
+  });
+}
+
+function clrTabs(pl){document.querySelectorAll('#vt-'+pl+' .vtab').forEach(x=>x.classList.remove('sf','sp','sfu'))}
+
+function buildImpl(pl,cid){
+  const grid=$('ig-'+pl);const ic={f:'if',p:'ip',fu:'ifu'}[pl];
+  grid.innerHTML='';
+  IMPL[cid].forEach((im,i)=>{
+    const d=document.createElement('div');
+    d.className='impl-card';
+    d.innerHTML=`<div class="iname">${im.lbl}</div><div class="idim">${im.dim}</div><div class="ival">Cavalo R$${(im.vc/1000).toFixed(0)}k + Impl R$${(im.vr/1000).toFixed(0)}k · ${im.kmL} km/L</div>`;
+    d.onclick=()=>{document.querySelectorAll('#ig-'+pl+' .impl-card').forEach(x=>x.classList.remove('if','ip','ifu'));d.classList.add(ic);S[pl].i=im;applyI(pl,im,S[pl].v)};
+    grid.appendChild(d);
+    if(i===0){d.classList.add(ic);S[pl].i=im;applyI(pl,im,S[pl].v)}
+  });
+}
+
+function applyV(pl,v){
+  if(pl==='f'){$('f-km').value=v.km}
+  if(pl==='p'){$('p-km').value=v.km;$('p-kml').value=v.kmL;$('p-vcav').value=v.vc;$('p-vimpl').value=v.vr;$('p-sal').value=v.sal;$('p-qpneu').value=v.pc+v.pr}
+  if(pl==='fu'){$('fu-km').value=v.km;$('fu-kml').value=v.kmL;$('fu-vcav').value=v.vc;$('fu-vreb').value=v.vr;$('fu-salm').value=v.sal;$('fu-pc').value=v.pc;$('fu-pr').value=v.pr;if(v.aet!==undefined)$('fu-aet').value=v.aet}
+}
+function applyI(pl,im,cav){
+  const sal=cav&&cav.sal?cav.sal:2810;
+  if(pl==='f'){$('f-km').value=im.km}
+  if(pl==='p'){$('p-km').value=im.km;$('p-kml').value=im.kmL;$('p-vcav').value=im.vc;$('p-vimpl').value=im.vr;$('p-sal').value=sal;$('p-qpneu').value=im.pc+im.pr;$('p-manut').value=im.manut}
+  if(pl==='fu'){$('fu-km').value=im.km;$('fu-kml').value=im.kmL;$('fu-vcav').value=im.vc;$('fu-vreb').value=im.vr;$('fu-salm').value=sal;$('fu-pc').value=im.pc;$('fu-pr').value=im.pr;$('fu-aet').value=im.aet}
+}
+
+// ─── CÁLCULOS ─────────────────────────────────────────────────────────────────
+function getData(pl){
+  const v=S[pl].v,i=S[pl].i;
+  if(!v)return null;
+  if(i)return{...i,sal:v.sal||2810,isC:true};
+  return{...v,vc:v.vc,vr:v.vr,isC:false};
+}
+
+function calc(pl){
+  if(pl==='f')calcF();
+  else if(pl==='p')calcP();
+  else calcFU();
+}
+
+function calcF(){
+  const d=getData('f');if(!d){alert('Selecione um veículo.');return}
+  const diesel=gv('f-diesel',5.8),km=gv('f-km',d.km||8200),dist=gv('f-dist',500);
+  const kmlC=$('f-ct').checked?gv('f-kml-c',0):0;
+  const kml=kmlC>0?kmlC:(d.kmL||3.5);
+  const cont=$('f-cont')&&$('f-cont').checked; // carreta do contratante
+  const vc=d.vc||300000,sal=d.sal||2810,vidc=d.vidc||96,rpc=d.rpc||.6,aet=d.aet||0;
+  const vr=cont?0:(d.vr||0),vidr=cont?100:(d.vidr||100),rpr=cont?0:(d.rpr||.7344);
+  const pneus=(d.pc||7)+(cont?0:(d.pr||0));
+  const A=(vc+vr)*K.txcap/12,Sm=sal*(1+K.enc),Rc=(vc*rpc)/vidc,Rr=vr>0?(vr*rpr)/vidr:0,Sg=(vc*.005+vr*.005)*(1+K.iof)/12,Lic=(vc*K.ipva/12)+(K.lic+K.taco+K.dpvat)/12,Rg=K.rastr+K.gris+aet;
+  const ft=A+Sm+Rc+Rr+Sg+Lic+Rg,fkm=ft/km;
+  const comb=diesel/kml,pnv=pneus*(K.ppn+K.recap*K.recapp)/K.vpn,arla=(1/kml)*K.arlar*K.arlap,lubr=.041,remvar=K.ppq+(sal/(K.dias*K.horas*K.vel)),manut=d.manut||(vc*.01/km);
+  const vt=comb+manut+pnv+arla+lubr+remvar,ckm=fkm+vt;
+  const {a,l}=admLucro(dist,$('f-adm').value,$('f-lucro').value),frete=ckm/(1-a-l);
+  S.f.custo=ckm;S.f.frete=frete;
+  sv('rf-tot',fmt(ckm));sv('rf-fmen','R$ '+fmt(ft)+(cont?' ⚠️ sem reboque':''));sv('rf-vkm','R$ '+fmt(vt)+'/km');
+  sv('rf-rep','R$ '+fmt((Rc+Rr)/km)+'/km');sv('rf-sal','R$ '+fmt(Sm/km)+'/km');sv('rf-cap','R$ '+fmt(A/km)+'/km');sv('rf-seg','R$ '+fmt((Sg+Lic)/km)+'/km');sv('rf-rastr','R$ '+fmt(Rg/km)+'/km');sv('rf-ft','R$ '+fmt(fkm)+'/km');
+  sv('rf-comb','R$ '+fmt(comb)+'/km');sv('rf-man','R$ '+fmt(manut)+'/km');sv('rf-pneu','R$ '+fmt(pnv)+'/km');sv('rf-arla','R$ '+fmt(arla+lubr)+'/km');sv('rf-rv','R$ '+fmt(remvar)+'/km');sv('rf-vt','R$ '+fmt(vt)+'/km');
+  sv('rf-frete',fmt(frete));sv('rf-admr',fmt(a*100,1));sv('rf-lucr',fmt(l*100,1));
+  $('res-f').style.display='block';$('f-pr').classList.remove('show');
+}
+
+function calcP(){
+  const d=getData('p');if(!d){alert('Selecione um veículo.');return}
+  const diesel=gv('p-diesel',5.8),kml=gv('p-kml',d.kmL||3.5),km=gv('p-km',d.km||8200),dist=gv('p-dist',500);
+  const cont=$('p-cont')&&$('p-cont').checked; // carreta do contratante
+  const vc=gv('p-vcav',d.vc||300000);
+  const vr=cont?0:gv('p-vimpl',d.vr||0);
+  const sal=gv('p-sal',d.sal||2810);
+  const enc=gv('p-enc',99.18)/100,dias=gv('p-dias',24),remvar=gv('p-rv',.4),manut=gv('p-manut',d.manut||.65);
+  const ppn=gv('p-ppneu',2300),qpn=cont?(d.pc||7):gv('p-qpneu',(d.pc||7)+(d.pr||0)),vpn=gv('p-vpneu',275000),aet=cont?0:(d.aet||0);
+  const A=(vc+vr)*K.txcap/12,Sm=sal*(1+enc)+(K.plr/12)*(1+enc),So=(K.salmec*(1+K.enc)+K.plr*(1+K.enc)/12)/K.vmec;
+  const Rc=(vc*K.txrc)/96,Rr=vr>0?(vr*K.txrr)/100:0,Sg=(vc*.005+vr*.005)*(1+K.iof)/12,Lic=(vc*K.ipva/12)+(K.lic+K.taco+K.dpvat)/12,Rg=K.rastr+K.gris+aet;
+  const ft=A+Sm+So+Rc+Rr+Sg+Lic+Rg,fkm=ft/km;
+  const comb=diesel/kml,arla=(1/kml)*K.arlar*K.arlap,lubr=.041,lav=K.lav/K.kmlav,pnv=qpn*(ppn+K.recap*K.recapp)/vpn;
+  const vt=comb+arla+lubr+lav+manut+pnv+remvar,ckm=fkm+vt;
+  const {a,l}=admLucro(dist,$('p-adm').value,$('p-lucro').value),frete=ckm/(1-a-l);
+  S.p.custo=ckm;S.p.frete=frete;
+  sv('rp-tot',fmt(ckm));sv('rp-fmen','R$ '+fmt(ft)+(cont?' ⚠️ sem reboque':''));sv('rp-vkm','R$ '+fmt(vt)+'/km');
+  sv('rp-cap','R$ '+fmt(A/km)+'/km');sv('rp-rep','R$ '+fmt((Rc+Rr)/km)+'/km');sv('rp-sal','R$ '+fmt(Sm/km)+'/km');sv('rp-ofic','R$ '+fmt(So/km)+'/km');sv('rp-seg','R$ '+fmt(Sg/km)+'/km');sv('rp-lic','R$ '+fmt(Lic/km)+'/km');sv('rp-rastr','R$ '+fmt(Rg/km)+'/km');sv('rp-ft','R$ '+fmt(fkm)+'/km');
+  sv('rp-comb','R$ '+fmt(comb)+'/km');sv('rp-arla','R$ '+fmt(arla)+'/km');sv('rp-lubr','R$ '+fmt(lubr)+'/km');sv('rp-lav','R$ '+fmt(lav)+'/km');sv('rp-man','R$ '+fmt(manut)+'/km');sv('rp-pneu','R$ '+fmt(pnv)+'/km');sv('rp-rv','R$ '+fmt(remvar)+'/km');sv('rp-vt','R$ '+fmt(vt)+'/km');
+  sv('rp-frete',fmt(frete));sv('rp-admr',fmt(a*100,1));sv('rp-lucr',fmt(l*100,1));sv('rp-men',fmt(ckm*km));
+  $('res-p').style.display='block';$('p-pr').classList.remove('show');
+}
+
+function calcFU(){
+  const g=id=>gv(id,0);
+  const cont=$('fu-cont')&&$('fu-cont').checked; // carreta do contratante
+  const diesel=g('fu-diesel')||5.8,arlap=g('fu-arla')||1.52,kml=g('fu-kml')||3.5,km=g('fu-km')||10000,dist=g('fu-dist')||500,vel=g('fu-vel')||61;
+  const vc=g('fu-vcav'),vrRaw=g('fu-vreb'),vidc=g('fu-vidc')||96,vidr=g('fu-vidr')||100,rpc=g('fu-rpc')/100||.6,rpr=g('fu-rpr')/100||.7344,txcap=g('fu-txcap')/100||.035;
+  // Quando carreta é do contratante: zerar tudo relacionado ao reboque
+  const vr=cont?0:vrRaw;
+  const vidrEf=cont?100:vidr, rprEf=cont?0:rpr;
+  const secrRaw=g('fu-secr')/100||.005, secrEf=cont?0:secrRaw;
+  const aetRaw=g('fu-aet')||0, aetEf=cont?0:aetRaw;
+  const pnrRaw=g('fu-pr'), pnrEf=cont?0:pnrRaw;
+  const cintasRaw=g('fu-cintas')||256.67, cintasEf=cont?0:cintasRaw;
+  const salm=g('fu-salm')||2810,salmec=g('fu-salmec')||1951.78,plr=g('fu-plr')||1497.68,enc=g('fu-enc')/100||.9918,vmec=g('fu-vmec')||3,dias=g('fu-dias')||24,horas=g('fu-horas')||9.5,ppq=g('fu-ppq')||.12;
+  const pnc=g('fu-pc'),ppn=g('fu-ppn')||2300,prec=g('fu-prec')||650,qrec=g('fu-qrec')||2,vpn=g('fu-vpn')||275000,coepn=g('fu-coepn')||.07;
+  const carter=g('fu-carter')||35,rcar=g('fu-rcar')||9,kmoleo=g('fu-kmoleo')||30000,cdif=g('fu-cdif')||47.2,kmdif=g('fu-kmdif')||53000,ocarter=g('fu-ocarter')||16,odif=g('fu-odif')||20.23;
+  const ipva=g('fu-ipva')/100||.015,lic=g('fu-lic')||69.12,taco=g('fu-taco')||170,dpvat=g('fu-dpvat')||110.38,secc=g('fu-secc')/100||.005,iof=g('fu-iof')/100||.0738;
+  const gris=g('fu-gris')||22.5,rastr=g('fu-rastr')||100,lav=g('fu-lav')||290,kmlav=g('fu-kmlav')||15000;
+  // Fixos
+  const A=(vc+vr)*txcap/12,B=salm*(1+enc)+(plr/12)*(1+enc),C=(salmec*(1+enc)+plr*(1+enc)/12)/vmec;
+  const D=(vc*rpc)/vidc,E=vr>0?(vr*rprEf)/vidrEf:0,F=(vc*ipva/12)+(lic+taco+dpvat)/12;
+  const G=((vc*secc+vr*secrEf)*(1+iof))/12,I=aetEf,J=gris,N=cintasEf,O=rastr;
+  const ft=A+B+C+D+E+F+G+I+J+N+O,fkm=ft/km;
+  // Variáveis
+  const va=(vc+vr)*.01/km,vb=diesel/kml,vc2=(1/kml)*K.arlar*arlap;
+  const vd=((carter+rcar)*ocarter)/kmoleo+(cdif*odif)/kmdif,ve=lav/kmlav;
+  const vf=(pnc+pnrEf)*(ppn*(1+coepn)+qrec*prec)/vpn,diaria=salm/(dias*horas*vel),rv=ppq+diaria;
+  const vt=va+vb+vc2+vd+ve+vf+rv,ckm=fkm+vt;
+  const {a,l}=admLucro(dist,$('fu-adm').value,$('fu-lucro').value),frete=ckm/(1-a-l);
+  const hora=(ft/(dias*horas))*1.3;
+  S.fu.custo=ckm;S.fu.frete=frete;
+  // Badge contratante nos resultados
+  const contBadge=cont?'<span style="font-size:9px;background:rgba(239,68,68,.2);color:#ef4444;padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:700">REBOQUE DO CONTRATANTE</span>':'';
+  sv('rfu-tot',fmt(ckm));sv('rfu-fmen','R$ '+fmt(ft)+(cont?' ⚠️ (sem reboque)':''));sv('rfu-vkm','R$ '+fmt(vt)+'/km');
+  // Marcar linhas do reboque quando for do contratante
+  const eEl=document.querySelector('[id="rfu-e"]')?.closest('.bdr');
+  const nEl=document.querySelector('[id="rfu-n"]')?.closest('.bdr');
+  const iEl=document.querySelector('[id="rfu-i"]')?.closest('.bdr');
+  if(eEl)eEl.style.opacity=cont?'.35':'1';
+  if(nEl)nEl.style.opacity=cont?'.35':'1';
+  if(iEl)iEl.style.opacity=cont?'.35':'1';
+  sv('rfu-a','R$ '+fmt(A/km)+'/km');sv('rfu-b','R$ '+fmt(B/km)+'/km');sv('rfu-c','R$ '+fmt(C/km)+'/km');sv('rfu-d','R$ '+fmt(D/km)+'/km');sv('rfu-e','R$ '+fmt(E/km)+'/km');sv('rfu-f','R$ '+fmt(F/km)+'/km');sv('rfu-g','R$ '+fmt(G/km)+'/km');sv('rfu-i','R$ '+fmt(I/km)+'/km');sv('rfu-j','R$ '+fmt(J/km)+'/km');sv('rfu-n','R$ '+fmt(N/km)+'/km');sv('rfu-o','R$ '+fmt(O/km)+'/km');sv('rfu-ftm','R$ '+fmt(ft));sv('rfu-fkm','R$ '+fmt(fkm)+'/km');
+  sv('rfu-va','R$ '+fmt(va)+'/km');sv('rfu-vb','R$ '+fmt(vb)+'/km');sv('rfu-vc','R$ '+fmt(vc2)+'/km');sv('rfu-vd','R$ '+fmt(vd)+'/km');sv('rfu-ve','R$ '+fmt(ve)+'/km');sv('rfu-vf','R$ '+fmt(vf)+'/km');sv('rfu-rv','R$ '+fmt(rv)+'/km');sv('rfu-vt','R$ '+fmt(vt)+'/km');
+  sv('rfu-ckm',fmt(ckm));sv('rfu-admr',fmt(a*100,1));sv('rfu-lucr',fmt(l*100,1));sv('rfu-frete',fmt(frete));sv('rfu-men',fmt(ckm*km));sv('rfu-hora',fmt(hora));
+  $('res-fu').style.display='block';$('fu-pr').classList.remove('show');
+}
+
+// ─── PERCURSO ─────────────────────────────────────────────────────────────────
+function calcPerc(pl){
+  const ckm=S[pl].custo,fkm=S[pl].frete;
+  if(!ckm){alert('Calcule o custo/km primeiro.');return}
+  const pfx=pl;
+  const db=parseFloat($(pfx+'-pkm').value)||0;
+  if(db<=0){alert('Informe a distância do percurso.');return}
+  const tipo=$(pfx+'-ptipo').value;
+  const ped=parseFloat($(pfx+'-pped').value)||0;
+  const segPct=pl!=='f'?parseFloat($(pfx+'-pseg').value)||0:0;
+  const nf=pl!=='f'?parseFloat($(pfx+'-pnf').value)||0:0;
+  const esc=pl==='fu'?parseFloat($('fu-pesc').value)||0:0;
+  // Round trip = ida + volta (distância x 2)
+  const kmt=tipo==='rt'?db*2:db;
+  const op=ckm*kmt,segv=nf*segPct/100,total=fkm*kmt+ped+segv+esc;
+  // frete/km efetivo: dividido pelo km total percorrido (mais honesto para o TAC)
+  const fefkm=total/kmt;
+  const vel=pl==='fu'?(parseFloat($('fu-vel').value)||61):61;
+  const dias_v=Math.ceil(kmt/vel/10);
+  sv(pfx+'-pr-km',fmt(kmt,0)+' km'+(tipo==='rt'?' (ida+volta)':''));
+  sv(pfx+'-pr-op','R$ '+fmt(op));
+  sv(pfx+'-pr-ped','R$ '+fmt(ped));
+  if(pl!=='f')sv(pfx+'-pr-seg','R$ '+fmt(segv));
+  if(pl==='fu'){sv('fu-pr-esc','R$ '+fmt(esc));sv('fu-pr-dias',dias_v+' dias (est.)')}
+  sv(pfx+'-pr-tot','R$ '+fmt(total));
+  sv(pfx+'-pr-fkm','R$ '+fmt(fefkm)+'/km');
+  $(pfx+'-pr').classList.add('show');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+buildTabs('f');buildTabs('p');buildTabs('fu');
+</script>
+</body>
+</html>
