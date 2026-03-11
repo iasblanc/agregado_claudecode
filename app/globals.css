@@ -52,8 +52,6 @@
   --color-danger: #8B3A3A;
 }
 
-* { box-sizing: border-box; padding: 0; margin: 0; }
-
 html, body {
   background-color: var(--color-bg);
   color: var(--color-text-primary);
@@ -66,10 +64,6 @@ html, body {
 ::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
 
-.font-serif { font-family: 'Playfair Display', Georgia, serif; }
-.font-sans  { font-family: 'DM Sans', system-ui, sans-serif; }
 .pb-safe { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
-.blur-sm { filter: blur(4px); }
-.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
