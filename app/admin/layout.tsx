@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
-  LayoutDashboard, Users, Briefcase, ClipboardList,
+  LayoutDashboard, Users, Briefcase, ClipboardList, Star,
   LogOut, Truck, Shield, Loader2, Menu, X
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
@@ -13,6 +13,7 @@ const navItems = [
   { href: '/admin/usuarios', icon: Users, label: 'Usuários' },
   { href: '/admin/vagas', icon: Briefcase, label: 'Vagas' },
   { href: '/admin/candidaturas', icon: ClipboardList, label: 'Candidaturas' },
+  { href: '/admin/avaliacoes', icon: Star, label: 'Avaliações' },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
