@@ -1,11 +1,11 @@
 'use client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import Button from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Truck, Building2, ChevronRight, Eye, EyeOff, Mail } from 'lucide-react'
+import { Truck, Building2, ChevronRight, Eye, EyeOff, Mail, CheckCircle2 } from 'lucide-react'
 import type { UserTipo } from '@/lib/types'
 
 function translateError(msg: string): string {
@@ -20,10 +20,13 @@ function translateError(msg: string): string {
   return msg
 }
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter()
-  const [step, setStep] = useState<1 | 2 | 'verify'>(1)
-  const [tipo, setTipo] = useState<UserTipo | null>(null)
+  const searchParams = useSearchParams()
+  const tipoParam = searchParams.get('tipo') as UserTipo | null
+
+  const [step, setStep] = useState<1 | 2 | 'verify' | 'success'>(tipoParam ? 2 : 1)
+  const [tipo, setTipo] = useState<UserTipo | null>(tipoParam)
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -31,6 +34,14 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [resendCooldown, setResendCooldown] = useState(0)
+
+  // If tipoParam changes (e.g. navigation), sync state
+  useEffect(() => {
+    if (tipoParam && (tipoParam === 'agregado' || tipoParam === 'transportadora')) {
+      setTipo(tipoParam)
+      setStep(2)
+    }
+  }, [tipoParam])
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
@@ -40,7 +51,6 @@ export default function RegisterPage() {
 
     const supabase = createClient()
 
-    // Pass nome and tipo as user_metadata so they're available after email confirmation
     const { data, error: signUpErr } = await supabase.auth.signUp({
       email,
       password,
@@ -58,7 +68,8 @@ export default function RegisterPage() {
 
     // Profile is created automatically by the database trigger (handle_new_user)
     if (data.session) {
-      router.push(tipo === 'transportadora' ? '/transportadora/dashboard' : '/agregado/dashboard')
+      setLoading(false)
+      setStep('success')
       return
     }
 
@@ -99,12 +110,12 @@ export default function RegisterPage() {
           <div className="text-center mb-8">
             <h1 className="font-serif text-3xl font-semibold text-text-primary mb-2">Criar conta grátis</h1>
             <p className="text-text-secondary font-sans">
-              {step === 1 ? 'Qual é o seu perfil?' : step === 2 ? 'Complete seu cadastro' : 'Confirme seu e-mail'}
+              {step === 1 ? 'Qual é o seu perfil?' : step === 2 ? 'Complete seu cadastro' : step === 'verify' ? 'Confirme seu e-mail' : 'Cadastro realizado!'}
             </p>
           </div>
 
           {/* Step indicator */}
-          {step !== 'verify' && (
+          {(step === 1 || step === 2) && (
             <div className="flex items-center gap-2 mb-8 justify-center">
               {[1, 2].map(s => (
                 <div key={s} className={`h-1.5 rounded-pill transition-all ${s <= (step as number) ? 'bg-accent w-12' : 'bg-border w-6'}`} />
@@ -146,7 +157,7 @@ export default function RegisterPage() {
 
           {step === 2 && tipo && (
             <div className="bg-surface rounded-xl border border-border p-6 shadow-card">
-              <button onClick={() => setStep(1)} className="text-sm text-text-muted hover:text-text-secondary mb-4 inline-flex items-center gap-1">
+              <button onClick={() => { setStep(1); setTipo(null) }} className="text-sm text-text-muted hover:text-text-secondary mb-4 inline-flex items-center gap-1">
                 ← Voltar
               </button>
               <form onSubmit={handleRegister} className="flex flex-col gap-4">
@@ -234,12 +245,51 @@ export default function RegisterPage() {
             </div>
           )}
 
-          <p className="text-center text-sm text-text-secondary mt-6">
-            Já tem conta?{' '}
-            <Link href="/auth/login" className="text-accent font-medium hover:underline">Entrar</Link>
-          </p>
+          {step === 'success' && (
+            <div className="bg-surface rounded-xl border border-border p-8 shadow-card text-center">
+              <div className="w-16 h-16 bg-success-light rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 size={32} className="text-success" />
+              </div>
+              <h2 className="font-serif text-2xl font-semibold text-text-primary mb-2">
+                Bem-vindo, {nome.split(' ')[0]}!
+              </h2>
+              <p className="text-text-secondary text-sm mb-2">
+                Sua conta foi criada com sucesso como{' '}
+                <span className="font-semibold text-text-primary">
+                  {tipo === 'agregado' ? 'Agregado' : 'Transportadora'}
+                </span>.
+              </p>
+              <p className="text-text-muted text-xs mb-8">
+                {tipo === 'agregado'
+                  ? 'Você já pode configurar sua frota, calcular seu custo por km e acessar contratos.'
+                  : 'Você já pode publicar vagas e encontrar agregados qualificados.'}
+              </p>
+              <Button
+                fullWidth
+                size="lg"
+                onClick={() => router.push(tipo === 'transportadora' ? '/transportadora/dashboard' : '/agregado/dashboard')}
+              >
+                Acessar minha conta →
+              </Button>
+            </div>
+          )}
+
+          {step !== 'success' && (
+            <p className="text-center text-sm text-text-secondary mt-6">
+              Já tem conta?{' '}
+              <Link href="/auth/login" className="text-accent font-medium hover:underline">Entrar</Link>
+            </p>
+          )}
         </div>
       </div>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   )
 }
