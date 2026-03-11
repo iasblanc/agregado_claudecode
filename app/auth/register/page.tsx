@@ -9,12 +9,14 @@ import { Truck, Building2, ChevronRight, Eye, EyeOff, Mail } from 'lucide-react'
 import type { UserTipo } from '@/lib/types'
 
 function translateError(msg: string): string {
-  if (msg.includes('security purposes')) return 'Aguarde alguns segundos antes de tentar novamente.'
-  if (msg.includes('already registered') || msg.includes('User already registered')) return 'Este e-mail já está cadastrado. Tente fazer login.'
-  if (msg.includes('Invalid email')) return 'E-mail inválido.'
-  if (msg.includes('Password should be at least')) return 'A senha deve ter pelo menos 6 caracteres.'
-  if (msg.includes('Unable to validate email')) return 'E-mail inválido ou não aceito.'
-  if (msg.includes('Email rate limit')) return 'Muitas tentativas. Tente novamente em alguns minutos.'
+  const m = msg.toLowerCase()
+  if (m.includes('security purposes')) return 'Aguarde alguns segundos antes de tentar novamente.'
+  if (m.includes('already registered')) return 'Este e-mail já está cadastrado. Tente fazer login.'
+  if (m.includes('invalid email')) return 'E-mail inválido.'
+  if (m.includes('password should be at least')) return 'A senha deve ter pelo menos 6 caracteres.'
+  if (m.includes('unable to validate email')) return 'E-mail inválido ou não aceito.'
+  if (m.includes('email rate limit') || m.includes('rate limit exceeded')) return 'Limite de e-mails atingido. Aguarde alguns minutos ou contate o suporte.'
+  if (m.includes('signup disabled')) return 'Cadastro temporariamente desabilitado.'
   return msg
 }
 
