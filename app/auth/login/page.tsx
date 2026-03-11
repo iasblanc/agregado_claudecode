@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import Button from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Truck, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -41,9 +41,7 @@ export default function LoginPage() {
       {/* Header */}
       <header className="px-6 py-4 flex items-center justify-between border-b border-border">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-accent rounded-md flex items-center justify-center">
-            <Truck size={16} className="text-bg" />
-          </div>
+          <img src="/logo.svg" alt="Agregado.Pro" className="h-9 w-auto" />
           <span className="font-serif font-semibold text-text-primary text-lg">Agregado.Pro</span>
         </Link>
         <Link href="/auth/register" className="text-sm text-text-secondary hover:text-text-primary transition-colors">

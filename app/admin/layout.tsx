@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
   LayoutDashboard, Users, Briefcase, ClipboardList, Star,
-  LogOut, Truck, Shield, Loader2, Menu, X
+  LogOut, Shield, Loader2, Menu, X
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 
@@ -87,9 +87,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       `}>
         {/* Logo */}
         <div className="h-16 flex items-center gap-2.5 px-5 border-b border-border flex-shrink-0">
-          <div className="w-7 h-7 bg-accent rounded-md flex items-center justify-center">
-            <Truck size={14} className="text-bg" />
-          </div>
+          <img src="/logo.svg" alt="Agregado.Pro" className="h-7 w-auto" />
           <div>
             <span className="font-serif font-semibold text-text-primary text-sm leading-none block">Agregado.Pro</span>
             <div className="flex items-center gap-1 mt-0.5">
@@ -145,9 +143,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Menu size={20} />
         </button>
         <div className="flex items-center gap-2 flex-1">
-          <div className="w-6 h-6 bg-accent rounded-md flex items-center justify-center">
-            <Truck size={12} className="text-bg" />
-          </div>
+          <img src="/logo.svg" alt="Agregado.Pro" className="h-6 w-auto" />
           <span className="font-serif font-semibold text-text-primary text-sm">Admin</span>
         </div>
         <button

@@ -10,9 +10,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 bg-bg/90 backdrop-blur border-b border-border">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-accent rounded-md flex items-center justify-center">
-              <Truck size={16} className="text-bg" />
-            </div>
+            <img src="/logo.svg" alt="Agregado.Pro" className="h-9 w-auto" />
             <span className="font-serif font-semibold text-text-primary text-xl">Agregado.Pro</span>
           </div>
           <nav className="hidden md:flex items-center gap-6 text-sm text-text-secondary">
