@@ -70,7 +70,9 @@ export async function middleware(request: NextRequest) {
         .eq('id', user.id)
         .single()
 
-      if (profile?.tipo !== 'transportadora') {
+      // Fall back to user_metadata if profile doesn't exist yet (trigger may be pending)
+      const tipo = profile?.tipo || user.user_metadata?.tipo
+      if (tipo !== 'transportadora') {
         return NextResponse.redirect(new URL('/agregado/dashboard', request.url))
       }
     }
@@ -83,7 +85,9 @@ export async function middleware(request: NextRequest) {
         .eq('id', user.id)
         .single()
 
-      if (profile?.tipo !== 'agregado') {
+      // Fall back to user_metadata if profile doesn't exist yet (trigger may be pending)
+      const tipo = profile?.tipo || user.user_metadata?.tipo
+      if (tipo !== 'agregado') {
         return NextResponse.redirect(new URL('/transportadora/dashboard', request.url))
       }
     }

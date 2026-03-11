@@ -1,23 +1,47 @@
 'use client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import Button from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Truck, Building2, ChevronRight, Eye, EyeOff } from 'lucide-react'
+import { Truck, Building2, ChevronRight, Eye, EyeOff, Mail, CheckCircle2 } from 'lucide-react'
 import type { UserTipo } from '@/lib/types'
 
-export default function RegisterPage() {
+function translateError(msg: string): string {
+  const m = msg.toLowerCase()
+  if (m.includes('security purposes')) return 'Aguarde alguns segundos antes de tentar novamente.'
+  if (m.includes('already registered')) return 'Este e-mail já está cadastrado. Tente fazer login.'
+  if (m.includes('invalid email')) return 'E-mail inválido.'
+  if (m.includes('password should be at least')) return 'A senha deve ter pelo menos 6 caracteres.'
+  if (m.includes('unable to validate email')) return 'E-mail inválido ou não aceito.'
+  if (m.includes('email rate limit') || m.includes('rate limit exceeded')) return 'Limite de e-mails atingido. Aguarde alguns minutos ou contate o suporte.'
+  if (m.includes('signup disabled')) return 'Cadastro temporariamente desabilitado.'
+  return msg
+}
+
+function RegisterForm() {
   const router = useRouter()
-  const [step, setStep] = useState<1 | 2>(1)
-  const [tipo, setTipo] = useState<UserTipo | null>(null)
+  const searchParams = useSearchParams()
+  const tipoParam = searchParams.get('tipo') as UserTipo | null
+
+  const [step, setStep] = useState<1 | 2 | 'verify' | 'success'>(tipoParam ? 2 : 1)
+  const [tipo, setTipo] = useState<UserTipo | null>(tipoParam)
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [resendCooldown, setResendCooldown] = useState(0)
+
+  // If tipoParam changes (e.g. navigation), sync state
+  useEffect(() => {
+    if (tipoParam && (tipoParam === 'agregado' || tipoParam === 'transportadora')) {
+      setTipo(tipoParam)
+      setStep(2)
+    }
+  }, [tipoParam])
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
@@ -26,35 +50,45 @@ export default function RegisterPage() {
     setError('')
 
     const supabase = createClient()
-    const { data, error: signUpErr } = await supabase.auth.signUp({ email, password })
-    if (signUpErr || !data.user) {
-      setError(signUpErr?.message || 'Erro ao criar conta.')
-      setLoading(false)
-      return
-    }
 
-    const { error: profileErr } = await supabase.from('profiles').insert({
-      id: data.user.id,
-      tipo,
-      nome,
-      is_admin: false,
+    const { data, error: signUpErr } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { nome, tipo },
+      },
     })
 
-    if (profileErr) {
-      setError('Erro ao salvar perfil. Tente novamente.')
+    if (signUpErr || !data.user) {
+      console.error('[register] signUp error:', signUpErr)
+      setError(translateError(signUpErr?.message || 'Erro ao criar conta.'))
       setLoading(false)
       return
     }
 
-    // Create type-specific profile
-    if (tipo === 'agregado') {
-      await supabase.from('agregados').insert({ id: data.user.id })
-    } else {
-      await supabase.from('transportadoras').insert({ id: data.user.id })
+    // Profile is created automatically by the database trigger (handle_new_user)
+    if (data.session) {
+      setLoading(false)
+      setStep('success')
+      return
     }
 
-    if (tipo === 'transportadora') router.push('/transportadora/dashboard')
-    else router.push('/agregado/dashboard')
+    // No session = email confirmation required — show verify screen
+    setLoading(false)
+    setStep('verify')
+  }
+
+  async function handleResend() {
+    if (resendCooldown > 0) return
+    const supabase = createClient()
+    await supabase.auth.resend({ type: 'signup', email })
+    setResendCooldown(30)
+    const interval = setInterval(() => {
+      setResendCooldown(prev => {
+        if (prev <= 1) { clearInterval(interval); return 0 }
+        return prev - 1
+      })
+    }, 1000)
   }
 
   return (
@@ -76,21 +110,23 @@ export default function RegisterPage() {
           <div className="text-center mb-8">
             <h1 className="font-serif text-3xl font-semibold text-text-primary mb-2">Criar conta grátis</h1>
             <p className="text-text-secondary font-sans">
-              {step === 1 ? 'Qual é o seu perfil?' : 'Complete seu cadastro'}
+              {step === 1 ? 'Qual é o seu perfil?' : step === 2 ? 'Complete seu cadastro' : step === 'verify' ? 'Confirme seu e-mail' : 'Cadastro realizado!'}
             </p>
           </div>
 
           {/* Step indicator */}
-          <div className="flex items-center gap-2 mb-8 justify-center">
-            {[1, 2].map(s => (
-              <div key={s} className={`h-1.5 rounded-pill transition-all ${s <= step ? 'bg-accent w-12' : 'bg-border w-6'}`} />
-            ))}
-          </div>
+          {(step === 1 || step === 2) && (
+            <div className="flex items-center gap-2 mb-8 justify-center">
+              {[1, 2].map(s => (
+                <div key={s} className={`h-1.5 rounded-pill transition-all ${s <= (step as number) ? 'bg-accent w-12' : 'bg-border w-6'}`} />
+              ))}
+            </div>
+          )}
 
           {step === 1 && (
             <div className="flex flex-col gap-4">
               <button onClick={() => { setTipo('agregado'); setStep(2) }}
-                className={`p-5 rounded-xl border-2 text-left transition-all cursor-pointer ${tipo === 'agregado' ? 'border-accent bg-accent/5' : 'border-border bg-surface hover:border-text-muted'}`}>
+                className="p-5 rounded-xl border-2 text-left transition-all cursor-pointer border-border bg-surface hover:border-text-muted">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-success-light rounded-lg flex items-center justify-center flex-shrink-0">
                     <Truck size={24} className="text-success" />
@@ -104,7 +140,7 @@ export default function RegisterPage() {
               </button>
 
               <button onClick={() => { setTipo('transportadora'); setStep(2) }}
-                className={`p-5 rounded-xl border-2 text-left transition-all cursor-pointer ${tipo === 'transportadora' ? 'border-accent bg-accent/5' : 'border-border bg-surface hover:border-text-muted'}`}>
+                className="p-5 rounded-xl border-2 text-left transition-all cursor-pointer border-border bg-surface hover:border-text-muted">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-info-light rounded-lg flex items-center justify-center flex-shrink-0">
                     <Building2 size={24} className="text-info" />
@@ -121,7 +157,7 @@ export default function RegisterPage() {
 
           {step === 2 && tipo && (
             <div className="bg-surface rounded-xl border border-border p-6 shadow-card">
-              <button onClick={() => setStep(1)} className="text-sm text-text-muted hover:text-text-secondary mb-4 inline-flex items-center gap-1">
+              <button onClick={() => { setStep(1); setTipo(null) }} className="text-sm text-text-muted hover:text-text-secondary mb-4 inline-flex items-center gap-1">
                 ← Voltar
               </button>
               <form onSubmit={handleRegister} className="flex flex-col gap-4">
@@ -178,12 +214,82 @@ export default function RegisterPage() {
             </div>
           )}
 
-          <p className="text-center text-sm text-text-secondary mt-6">
-            Já tem conta?{' '}
-            <Link href="/auth/login" className="text-accent font-medium hover:underline">Entrar</Link>
-          </p>
+          {step === 'verify' && (
+            <div className="bg-surface rounded-xl border border-border p-8 shadow-card text-center">
+              <div className="w-16 h-16 bg-info-light rounded-full flex items-center justify-center mx-auto mb-4">
+                <Mail size={28} className="text-info" />
+              </div>
+              <h2 className="font-serif text-xl font-semibold text-text-primary mb-2">Verifique seu e-mail</h2>
+              <p className="text-text-secondary text-sm mb-1">Enviamos um link de confirmação para</p>
+              <p className="font-medium text-text-primary mb-6">{email}</p>
+              <p className="text-xs text-text-muted mb-6">
+                Clique no link do e-mail para ativar sua conta e acessar a plataforma.
+                Verifique também a pasta de spam.
+              </p>
+
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={handleResend}
+                disabled={resendCooldown > 0}
+              >
+                {resendCooldown > 0 ? `Reenviar em ${resendCooldown}s` : 'Reenviar e-mail'}
+              </Button>
+
+              <button
+                onClick={() => { setStep(2); setError('') }}
+                className="mt-4 text-sm text-text-muted hover:text-text-secondary transition-colors"
+              >
+                Usar outro e-mail
+              </button>
+            </div>
+          )}
+
+          {step === 'success' && (
+            <div className="bg-surface rounded-xl border border-border p-8 shadow-card text-center">
+              <div className="w-16 h-16 bg-success-light rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 size={32} className="text-success" />
+              </div>
+              <h2 className="font-serif text-2xl font-semibold text-text-primary mb-2">
+                Bem-vindo, {nome.split(' ')[0]}!
+              </h2>
+              <p className="text-text-secondary text-sm mb-2">
+                Sua conta foi criada com sucesso como{' '}
+                <span className="font-semibold text-text-primary">
+                  {tipo === 'agregado' ? 'Agregado' : 'Transportadora'}
+                </span>.
+              </p>
+              <p className="text-text-muted text-xs mb-8">
+                {tipo === 'agregado'
+                  ? 'Você já pode configurar sua frota, calcular seu custo por km e acessar contratos.'
+                  : 'Você já pode publicar vagas e encontrar agregados qualificados.'}
+              </p>
+              <Button
+                fullWidth
+                size="lg"
+                onClick={() => router.push(tipo === 'transportadora' ? '/transportadora/dashboard' : '/agregado/dashboard')}
+              >
+                Acessar minha conta →
+              </Button>
+            </div>
+          )}
+
+          {step !== 'success' && (
+            <p className="text-center text-sm text-text-secondary mt-6">
+              Já tem conta?{' '}
+              <Link href="/auth/login" className="text-accent font-medium hover:underline">Entrar</Link>
+            </p>
+          )}
         </div>
       </div>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   )
 }

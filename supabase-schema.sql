@@ -209,8 +209,36 @@ CREATE POLICY "admin_all_profiles" ON public.profiles FOR ALL USING (
 );
 
 -- =====================================================
--- Auth trigger: auto-create agregado/transportadora row
--- (Optional convenience - profile is created by the app)
+-- Auth trigger: auto-create profile on user signup
+-- Runs with SECURITY DEFINER (superuser privileges), bypassing RLS
 -- =====================================================
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, tipo, nome, is_admin)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'tipo', 'agregado'),
+    COALESCE(NEW.raw_user_meta_data->>'nome', ''),
+    FALSE
+  )
+  ON CONFLICT (id) DO NOTHING;
+
+  IF (NEW.raw_user_meta_data->>'tipo' = 'transportadora') THEN
+    INSERT INTO public.transportadoras (id) VALUES (NEW.id)
+    ON CONFLICT (id) DO NOTHING;
+  ELSE
+    INSERT INTO public.agregados (id) VALUES (NEW.id)
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
 -- To make the first user an admin, run:
 -- UPDATE public.profiles SET is_admin = TRUE WHERE id = 'YOUR_USER_ID';

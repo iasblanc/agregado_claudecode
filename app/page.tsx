@@ -45,13 +45,13 @@ export default function LandingPage() {
             Gestão financeira completa, cálculo real de custo por km e acesso ao marketplace de contratos. Tudo integrado para você saber se está lucrando ou perdendo.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/auth/register">
+            <Link href="/auth/register?tipo=agregado">
               <Button size="lg" className="gap-2">
                 <Truck size={18} />
                 Sou Agregado — Começar grátis
               </Button>
             </Link>
-            <Link href="/auth/register">
+            <Link href="/auth/register?tipo=transportadora">
               <Button size="lg" variant="secondary" className="gap-2">
                 <Building2 size={18} />
                 Sou Transportadora
@@ -298,13 +298,13 @@ export default function LandingPage() {
             Saiba se seu caminhão está dando lucro ou prejuízo. Em menos de 10 minutos.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/auth/register">
+            <Link href="/auth/register?tipo=agregado">
               <Button size="lg" className="bg-bg! text-accent! hover:bg-surface! gap-2">
                 <Truck size={18} />
                 Sou Agregado — Começar
               </Button>
             </Link>
-            <Link href="/auth/register">
+            <Link href="/auth/register?tipo=transportadora">
               <Button size="lg" className="bg-transparent! text-bg! border border-bg/30! hover:bg-bg/10! gap-2">
                 <Building2 size={18} />
                 Sou Transportadora

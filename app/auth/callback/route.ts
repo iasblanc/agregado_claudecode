@@ -22,7 +22,16 @@ export async function GET(request: NextRequest) {
         },
       }
     )
+
     await supabase.auth.exchangeCodeForSession(code)
+
+    // Profile is created automatically by the database trigger (handle_new_user)
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (user) {
+      const tipo = user.user_metadata?.tipo || 'agregado'
+      return NextResponse.redirect(`${origin}/${tipo === 'transportadora' ? 'transportadora' : 'agregado'}/dashboard`)
+    }
   }
 
   return NextResponse.redirect(`${origin}/`)
