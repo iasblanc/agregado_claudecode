@@ -41,9 +41,7 @@ export default async function PublicVagaDetailPage({ params }: PageProps) {
       <header className="sticky top-0 z-40 bg-bg/90 backdrop-blur border-b border-border">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
           <Link href="/vagas" className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-accent rounded-md flex items-center justify-center">
-              <Truck size={14} className="text-bg" />
-            </div>
+            <img src="/logo.svg" alt="Agregado.Pro" className="h-8 w-auto" />
             <span className="font-serif font-semibold text-text-primary">Agregado.Pro</span>
           </Link>
           <div className="flex items-center gap-2">

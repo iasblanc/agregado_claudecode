@@ -95,9 +95,7 @@ function RegisterForm() {
     <div className="min-h-screen bg-bg flex flex-col">
       <header className="px-6 py-4 flex items-center justify-between border-b border-border">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-accent rounded-md flex items-center justify-center">
-            <Truck size={16} className="text-bg" />
-          </div>
+          <img src="/logo.svg" alt="Agregado.Pro" className="h-9 w-auto" />
           <span className="font-serif font-semibold text-text-primary text-lg">Agregado.Pro</span>
         </Link>
         <Link href="/auth/login" className="text-sm text-text-secondary hover:text-text-primary transition-colors">

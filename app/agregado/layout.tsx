@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Calculator, TrendingUp, Store, BookUser, LogOut, Truck, Bell } from 'lucide-react'
+import { LayoutDashboard, Calculator, TrendingUp, Store, BookUser, LogOut, Bell } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 
 const navItems = [
@@ -28,9 +28,7 @@ export default function AgregadoLayout({ children }: { children: React.ReactNode
       <header className="sticky top-0 z-40 bg-bg/90 backdrop-blur border-b border-border">
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-accent rounded-md flex items-center justify-center">
-              <Truck size={14} className="text-bg" />
-            </div>
+            <img src="/logo.svg" alt="Agregado.Pro" className="h-7 w-auto" />
             <span className="font-serif font-semibold text-text-primary">Agregado.Pro</span>
           </div>
           <div className="flex items-center gap-1">

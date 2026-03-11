@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Briefcase, LogOut, Truck, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Briefcase, LogOut, Menu, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { useState } from 'react'
 
@@ -27,9 +27,7 @@ export default function TransportadoraLayout({ children }: { children: React.Rea
       <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 md:w-56 bg-surface border-r border-border z-40">
         {/* Logo */}
         <div className="h-16 flex items-center gap-2.5 px-5 border-b border-border flex-shrink-0">
-          <div className="w-7 h-7 bg-accent rounded-md flex items-center justify-center">
-            <Truck size={14} className="text-bg" />
-          </div>
+          <img src="/logo.svg" alt="Agregado.Pro" className="h-7 w-auto" />
           <div>
             <span className="font-serif font-semibold text-text-primary text-sm leading-none block">Agregado.Pro</span>
             <span className="text-[10px] text-text-muted font-sans">Transportadora</span>
@@ -77,9 +75,7 @@ export default function TransportadoraLayout({ children }: { children: React.Rea
       <header className="md:hidden sticky top-0 z-40 bg-bg/90 backdrop-blur border-b border-border">
         <div className="px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-accent rounded-md flex items-center justify-center">
-              <Truck size={14} className="text-bg" />
-            </div>
+            <img src="/logo.svg" alt="Agregado.Pro" className="h-7 w-auto" />
             <div>
               <span className="font-serif font-semibold text-text-primary text-sm leading-none block">Agregado.Pro</span>
               <span className="text-[10px] text-text-muted font-sans">Transportadora</span>
