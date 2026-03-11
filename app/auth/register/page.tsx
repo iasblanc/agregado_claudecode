@@ -55,27 +55,8 @@ export default function RegisterPage() {
       return
     }
 
-    // If we have a session, email confirmation is disabled — create profile immediately
+    // Profile is created automatically by the database trigger (handle_new_user)
     if (data.session) {
-      const { error: profileErr } = await supabase.from('profiles').insert({
-        id: data.user.id,
-        tipo,
-        nome,
-        is_admin: false,
-      })
-
-      if (profileErr) {
-        setError('Erro ao salvar perfil. Tente novamente.')
-        setLoading(false)
-        return
-      }
-
-      if (tipo === 'agregado') {
-        await supabase.from('agregados').insert({ id: data.user.id })
-      } else {
-        await supabase.from('transportadoras').insert({ id: data.user.id })
-      }
-
       router.push(tipo === 'transportadora' ? '/transportadora/dashboard' : '/agregado/dashboard')
       return
     }
