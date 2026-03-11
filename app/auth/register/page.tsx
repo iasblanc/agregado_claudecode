@@ -50,6 +50,7 @@ export default function RegisterPage() {
     })
 
     if (signUpErr || !data.user) {
+      console.error('[register] signUp error:', signUpErr)
       setError(translateError(signUpErr?.message || 'Erro ao criar conta.'))
       setLoading(false)
       return
