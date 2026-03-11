@@ -22,7 +22,45 @@ export async function GET(request: NextRequest) {
         },
       }
     )
+
     await supabase.auth.exchangeCodeForSession(code)
+
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (user) {
+      // Check if profile already exists (e.g. if created immediately after signUp)
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('id, tipo')
+        .eq('id', user.id)
+        .single()
+
+      if (!existing) {
+        // Create profile from user_metadata saved during signUp
+        const nome = user.user_metadata?.nome || ''
+        const tipo = user.user_metadata?.tipo || 'agregado'
+
+        await supabase.from('profiles').upsert({
+          id: user.id,
+          tipo,
+          nome,
+          is_admin: false,
+        })
+
+        if (tipo === 'agregado') {
+          await supabase.from('agregados').upsert({ id: user.id })
+        } else {
+          await supabase.from('transportadoras').upsert({ id: user.id })
+        }
+      }
+
+      // Redirect to the correct dashboard based on profile type
+      const profileTipo = existing?.tipo || user.user_metadata?.tipo || 'agregado'
+      if (profileTipo === 'transportadora') {
+        return NextResponse.redirect(`${origin}/transportadora/dashboard`)
+      }
+      return NextResponse.redirect(`${origin}/agregado/dashboard`)
+    }
   }
 
   return NextResponse.redirect(`${origin}/`)

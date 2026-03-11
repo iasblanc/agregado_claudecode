@@ -5,12 +5,22 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import Button from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Truck, Building2, ChevronRight, Eye, EyeOff } from 'lucide-react'
+import { Truck, Building2, ChevronRight, Eye, EyeOff, Mail } from 'lucide-react'
 import type { UserTipo } from '@/lib/types'
+
+function translateError(msg: string): string {
+  if (msg.includes('security purposes')) return 'Aguarde alguns segundos antes de tentar novamente.'
+  if (msg.includes('already registered') || msg.includes('User already registered')) return 'Este e-mail já está cadastrado. Tente fazer login.'
+  if (msg.includes('Invalid email')) return 'E-mail inválido.'
+  if (msg.includes('Password should be at least')) return 'A senha deve ter pelo menos 6 caracteres.'
+  if (msg.includes('Unable to validate email')) return 'E-mail inválido ou não aceito.'
+  if (msg.includes('Email rate limit')) return 'Muitas tentativas. Tente novamente em alguns minutos.'
+  return msg
+}
 
 export default function RegisterPage() {
   const router = useRouter()
-  const [step, setStep] = useState<1 | 2>(1)
+  const [step, setStep] = useState<1 | 2 | 'verify'>(1)
   const [tipo, setTipo] = useState<UserTipo | null>(null)
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
@@ -18,6 +28,7 @@ export default function RegisterPage() {
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [resendCooldown, setResendCooldown] = useState(0)
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
@@ -26,35 +37,63 @@ export default function RegisterPage() {
     setError('')
 
     const supabase = createClient()
-    const { data, error: signUpErr } = await supabase.auth.signUp({ email, password })
-    if (signUpErr || !data.user) {
-      setError(signUpErr?.message || 'Erro ao criar conta.')
-      setLoading(false)
-      return
-    }
 
-    const { error: profileErr } = await supabase.from('profiles').insert({
-      id: data.user.id,
-      tipo,
-      nome,
-      is_admin: false,
+    // Pass nome and tipo as user_metadata so they're available after email confirmation
+    const { data, error: signUpErr } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { nome, tipo },
+      },
     })
 
-    if (profileErr) {
-      setError('Erro ao salvar perfil. Tente novamente.')
+    if (signUpErr || !data.user) {
+      setError(translateError(signUpErr?.message || 'Erro ao criar conta.'))
       setLoading(false)
       return
     }
 
-    // Create type-specific profile
-    if (tipo === 'agregado') {
-      await supabase.from('agregados').insert({ id: data.user.id })
-    } else {
-      await supabase.from('transportadoras').insert({ id: data.user.id })
+    // If we have a session, email confirmation is disabled — create profile immediately
+    if (data.session) {
+      const { error: profileErr } = await supabase.from('profiles').insert({
+        id: data.user.id,
+        tipo,
+        nome,
+        is_admin: false,
+      })
+
+      if (profileErr) {
+        setError('Erro ao salvar perfil. Tente novamente.')
+        setLoading(false)
+        return
+      }
+
+      if (tipo === 'agregado') {
+        await supabase.from('agregados').insert({ id: data.user.id })
+      } else {
+        await supabase.from('transportadoras').insert({ id: data.user.id })
+      }
+
+      router.push(tipo === 'transportadora' ? '/transportadora/dashboard' : '/agregado/dashboard')
+      return
     }
 
-    if (tipo === 'transportadora') router.push('/transportadora/dashboard')
-    else router.push('/agregado/dashboard')
+    // No session = email confirmation required — show verify screen
+    setLoading(false)
+    setStep('verify')
+  }
+
+  async function handleResend() {
+    if (resendCooldown > 0) return
+    const supabase = createClient()
+    await supabase.auth.resend({ type: 'signup', email })
+    setResendCooldown(30)
+    const interval = setInterval(() => {
+      setResendCooldown(prev => {
+        if (prev <= 1) { clearInterval(interval); return 0 }
+        return prev - 1
+      })
+    }, 1000)
   }
 
   return (
@@ -76,21 +115,23 @@ export default function RegisterPage() {
           <div className="text-center mb-8">
             <h1 className="font-serif text-3xl font-semibold text-text-primary mb-2">Criar conta grátis</h1>
             <p className="text-text-secondary font-sans">
-              {step === 1 ? 'Qual é o seu perfil?' : 'Complete seu cadastro'}
+              {step === 1 ? 'Qual é o seu perfil?' : step === 2 ? 'Complete seu cadastro' : 'Confirme seu e-mail'}
             </p>
           </div>
 
           {/* Step indicator */}
-          <div className="flex items-center gap-2 mb-8 justify-center">
-            {[1, 2].map(s => (
-              <div key={s} className={`h-1.5 rounded-pill transition-all ${s <= step ? 'bg-accent w-12' : 'bg-border w-6'}`} />
-            ))}
-          </div>
+          {step !== 'verify' && (
+            <div className="flex items-center gap-2 mb-8 justify-center">
+              {[1, 2].map(s => (
+                <div key={s} className={`h-1.5 rounded-pill transition-all ${s <= (step as number) ? 'bg-accent w-12' : 'bg-border w-6'}`} />
+              ))}
+            </div>
+          )}
 
           {step === 1 && (
             <div className="flex flex-col gap-4">
               <button onClick={() => { setTipo('agregado'); setStep(2) }}
-                className={`p-5 rounded-xl border-2 text-left transition-all cursor-pointer ${tipo === 'agregado' ? 'border-accent bg-accent/5' : 'border-border bg-surface hover:border-text-muted'}`}>
+                className="p-5 rounded-xl border-2 text-left transition-all cursor-pointer border-border bg-surface hover:border-text-muted">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-success-light rounded-lg flex items-center justify-center flex-shrink-0">
                     <Truck size={24} className="text-success" />
@@ -104,7 +145,7 @@ export default function RegisterPage() {
               </button>
 
               <button onClick={() => { setTipo('transportadora'); setStep(2) }}
-                className={`p-5 rounded-xl border-2 text-left transition-all cursor-pointer ${tipo === 'transportadora' ? 'border-accent bg-accent/5' : 'border-border bg-surface hover:border-text-muted'}`}>
+                className="p-5 rounded-xl border-2 text-left transition-all cursor-pointer border-border bg-surface hover:border-text-muted">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-info-light rounded-lg flex items-center justify-center flex-shrink-0">
                     <Building2 size={24} className="text-info" />
@@ -175,6 +216,37 @@ export default function RegisterPage() {
                 <span className="underline cursor-pointer">Termos de Uso</span> e{' '}
                 <span className="underline cursor-pointer">Política de Privacidade</span>
               </p>
+            </div>
+          )}
+
+          {step === 'verify' && (
+            <div className="bg-surface rounded-xl border border-border p-8 shadow-card text-center">
+              <div className="w-16 h-16 bg-info-light rounded-full flex items-center justify-center mx-auto mb-4">
+                <Mail size={28} className="text-info" />
+              </div>
+              <h2 className="font-serif text-xl font-semibold text-text-primary mb-2">Verifique seu e-mail</h2>
+              <p className="text-text-secondary text-sm mb-1">Enviamos um link de confirmação para</p>
+              <p className="font-medium text-text-primary mb-6">{email}</p>
+              <p className="text-xs text-text-muted mb-6">
+                Clique no link do e-mail para ativar sua conta e acessar a plataforma.
+                Verifique também a pasta de spam.
+              </p>
+
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={handleResend}
+                disabled={resendCooldown > 0}
+              >
+                {resendCooldown > 0 ? `Reenviar em ${resendCooldown}s` : 'Reenviar e-mail'}
+              </Button>
+
+              <button
+                onClick={() => { setStep(2); setError('') }}
+                className="mt-4 text-sm text-text-muted hover:text-text-secondary transition-colors"
+              >
+                Usar outro e-mail
+              </button>
             </div>
           )}
 
