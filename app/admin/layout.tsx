@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
   LayoutDashboard, Users, Briefcase, ClipboardList, Star,
-  LogOut, Shield, Loader2, Menu, X
+  LogOut, Shield, Loader2, Menu, X, Calculator
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 
@@ -14,6 +14,7 @@ const navItems = [
   { href: '/admin/vagas', icon: Briefcase, label: 'Vagas' },
   { href: '/admin/candidaturas', icon: ClipboardList, label: 'Candidaturas' },
   { href: '/admin/avaliacoes', icon: Star, label: 'Avaliações' },
+  { href: '/admin/calculadora', icon: Calculator, label: 'Calculadora' },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
