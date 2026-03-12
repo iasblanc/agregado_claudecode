@@ -90,6 +90,7 @@ const fR = (v: number) => `R$ ${fmt(v)}/km`
 
 // ─── INTERFACES ────────────────────────────────────────────────────────────────
 type Plano = 'f' | 'p' | 'fu'
+type PlanSel = { vId:string; cavId:string; implId:string; cont:boolean }
 type FIn = { diesel:number; km:number; dist:number; admOv:string; lucroOv:string; useRealKml:boolean; kmlC:number }
 type PIn = { diesel:number; kml:number; km:number; dist:number; vcav:number; vimpl:number; sal:number; enc:number; dias:number; remvar:number; manut:number; ppneu:number; qpneu:number; pcav:number; vpneu:number; admOv:string; lucroOv:string }
 type FUIn = { diesel:number; arlap:number; kml:number; km:number; dist:number; vel:number; vcav:number; vimpl:number; vidc:number; vidr:number; rpc:number; rpr:number; txcap:number; salm:number; salmec:number; plr:number; enc:number; vmec:number; dias:number; horas:number; ppq:number; pc:number; pr:number; ppn:number; prec:number; qrec:number; vpn:number; coepn:number; carter:number; rcar:number; kmoleo:number; cdif:number; kmdif:number; ocarter:number; odif:number; ipva:number; lic:number; taco:number; dpvat:number; secc:number; secr:number; iof:number; gris:number; rastr:number; aet:number; cintas:number; lav:number; kmlav:number; admOv:string; lucroOv:string }
@@ -127,10 +128,10 @@ export default function CustoKmPage() {
   const kRef = useRef<typeof K>(K)
   const admRef = useRef<AdmRow[]>(ADM_TBL)
   const [plano, setPlano] = useState<Plano>('f')
-  const [selVId, setSelVId] = useState<string>('tk8')
-  const [selCavId, setSelCavId] = useState<string>('')
-  const [selImplId, setSelImplId] = useState<string>('')
-  const [contratante, setContratante] = useState(false)
+  const defSel = (): PlanSel => ({vId:'tk8', cavId:'', implId:'', cont:false})
+  const [sel, setSel] = useState<Record<Plano,PlanSel>>({
+    f: defSel(), p: defSel(), fu: defSel()
+  })
   const [fIn, setFIn] = useState<FIn>(mkFIn(DEF_V))
   const [pIn, setPIn] = useState<PIn>(mkPIn(DEF_V))
   const [fuIn, setFuIn] = useState<FUIn>(mkFUIn(DEF_V))
@@ -175,46 +176,56 @@ export default function CustoKmPage() {
         if (pl === 'f' && p.fIn) setFIn(p.fIn as FIn)
         if (pl === 'p' && p.pIn) setPIn(p.pIn as PIn)
         if (pl === 'fu' && p.fuIn) setFuIn(p.fuIn as FUIn)
-        if (p.selVId) setSelVId(p.selVId as string)
-        if (p.selCavId) setSelCavId(p.selCavId as string)
-        if (p.selImplId) setSelImplId(p.selImplId as string)
-        if (p.contratante) setContratante(p.contratante as boolean)
+        if (p.sel) setSel(p.sel as Record<Plano,PlanSel>)
+        else {
+          // fallback para formato antigo (sem per-plan sel)
+          const oldSel: Partial<PlanSel> = {}
+          if (p.selVId) oldSel.vId = p.selVId as string
+          if (p.selCavId) oldSel.cavId = p.selCavId as string
+          if (p.selImplId) oldSel.implId = p.selImplId as string
+          if (p.contratante) oldSel.cont = p.contratante as boolean
+          if (Object.keys(oldSel).length) setSel(s => ({...s, [pl]: {...s[pl as Plano], ...oldSel}}))
+        }
       }
     })
   }, [])
 
-  // Obter dados do veículo atual
+  // Seleção do plano atual
+  const cs = sel[plano]
+  const cavalo = cs.cavId ? cavActive.find(c => c.id === cs.cavId) : null
+
+  // Obter dados do veículo atual (usa seleção do plano ativo)
   function getVehicleData(): VD | null {
-    if (selCavId && selImplId) {
-      const impl = implActive[selCavId]?.find(i => i.id === selImplId)
+    if (cs.cavId && cs.implId) {
+      const impl = implActive[cs.cavId]?.find(i => i.id === cs.implId)
       if (impl) return impl
     }
-    if (selVId) return vsActive.find(v => v.id === selVId) ?? null
+    if (cs.vId) return vsActive.find(v => v.id === cs.vId) ?? null
     return null
   }
-  const cavalo = selCavId ? cavActive.find(c => c.id === selCavId) : null
 
   function selectVehicle(v: VD) {
-    setSelVId(v.id); setSelCavId(''); setSelImplId(''); setContratante(false)
-    setFIn(prev => ({...prev, km: v.km}))
-    setPIn(prev => ({...prev, km:v.km, kml:v.kmL, vcav:v.vc, vimpl:v.vr, sal:v.sal, qpneu:v.pc+v.pr, pcav:v.pc, manut:v.manut??.65}))
-    setFuIn(prev => ({...prev, km:v.km, kml:v.kmL, vcav:v.vc, vimpl:v.vr, salm:v.sal, pc:v.pc, pr:v.pr, aet:v.aet, vidc:v.vidc, vidr:v.vidr, rpc:v.rpc*100, rpr:v.rpr*100}))
+    setSel(s => ({...s, [plano]: {vId:v.id, cavId:'', implId:'', cont:false}}))
+    if (plano==='f') setFIn(p=>({...p, km:v.km}))
+    if (plano==='p') setPIn(p=>({...p, km:v.km, kml:v.kmL, vcav:v.vc, vimpl:v.vr, sal:v.sal, qpneu:v.pc+v.pr, pcav:v.pc, manut:v.manut??.65}))
+    if (plano==='fu') setFuIn(p=>({...p, km:v.km, kml:v.kmL, vcav:v.vc, vimpl:v.vr, salm:v.sal, pc:v.pc, pr:v.pr, aet:v.aet, vidc:v.vidc, vidr:v.vidr, rpc:v.rpc*100, rpr:v.rpr*100}))
     setResult(null); setPercResult(null)
   }
   function selectCavalo(c: CD) {
-    setSelVId(''); setSelCavId(c.id); setContratante(false)
     const firstImpl = implActive[c.id]?.[0]
-    if (firstImpl) { setSelImplId(firstImpl.id); applyImpl(firstImpl, c.sal) }
+    setSel(s => ({...s, [plano]: {vId:'', cavId:c.id, implId:firstImpl?.id??'', cont:false}}))
+    if (firstImpl) applyImpl(firstImpl, c.sal)
     setResult(null); setPercResult(null)
   }
   function selectImpl(im: ID, cavSal: number) {
-    setSelImplId(im.id); applyImpl(im, cavSal)
+    setSel(s => ({...s, [plano]: {...s[plano], implId:im.id}}))
+    applyImpl(im, cavSal)
     setResult(null); setPercResult(null)
   }
   function applyImpl(im: ID, cavSal: number) {
-    setFIn(prev => ({...prev, km: im.km}))
-    setPIn(prev => ({...prev, km:im.km, kml:im.kmL, vcav:im.vc, vimpl:im.vr, sal:cavSal, qpneu:im.pc+im.pr, pcav:im.pc, manut:im.manut??prev.manut}))
-    setFuIn(prev => ({...prev, km:im.km, kml:im.kmL, vcav:im.vc, vimpl:im.vr, salm:cavSal, pc:im.pc, pr:im.pr, aet:im.aet, vidc:im.vidc, vidr:im.vidr, rpc:im.rpc*100, rpr:im.rpr*100}))
+    if (plano==='f') setFIn(p=>({...p, km:im.km}))
+    if (plano==='p') setPIn(p=>({...p, km:im.km, kml:im.kmL, vcav:im.vc, vimpl:im.vr, sal:cavSal, qpneu:im.pc+im.pr, pcav:im.pc, manut:im.manut??p.manut}))
+    if (plano==='fu') setFuIn(p=>({...p, km:im.km, kml:im.kmL, vcav:im.vc, vimpl:im.vr, salm:cavSal, pc:im.pc, pr:im.pr, aet:im.aet, vidc:im.vidc, vidr:im.vidr, rpc:im.rpc*100, rpr:im.rpr*100}))
   }
 
   // ─── CÁLCULOS ───────────────────────────────────────────────────────────────
@@ -223,7 +234,7 @@ export default function CustoKmPage() {
     const d = getVehicleData(); if (!d) { alert('Selecione um veículo.'); return }
     const {diesel,km,dist,admOv,lucroOv,useRealKml,kmlC} = fIn
     const kml = (useRealKml && kmlC > 0) ? kmlC : d.kmL
-    const cont = contratante && !!selCavId
+    const cont = cs.cont && !!cs.cavId
     const vc=d.vc, sal=d.sal, vidc=d.vidc, rpc=d.rpc, aet=d.aet
     const vr=cont?0:d.vr, vidr=cont?100:d.vidr, rpr=cont?0:d.rpr
     const pc=d.pc, pr=cont?0:d.pr
@@ -253,7 +264,7 @@ export default function CustoKmPage() {
     const K = kRef.current
     const d = getVehicleData(); if (!d) { alert('Selecione um veículo.'); return }
     const {diesel,kml,km,dist,vcav,vimpl: vimplIn,sal,enc,dias,remvar,manut,ppneu,qpneu,pcav,vpneu,admOv,lucroOv} = pIn
-    const cont = contratante && !!selCavId
+    const cont = cs.cont && !!cs.cavId
     const vc=vcav, vr=cont?0:vimplIn
     const qpneuEf = cont ? (pcav ?? 0) : qpneu
     const encD=enc/100, aet=cont?0:(d.aet||0)
@@ -282,7 +293,7 @@ export default function CustoKmPage() {
   function calcFU() {
     const K = kRef.current
     const {diesel,arlap,kml,km,dist,vel,vcav,vimpl:vimplIn,vidc,vidr,rpc,rpr,txcap,salm,salmec,plr,enc,vmec,dias,horas,ppq,pc,pr:prIn,ppn,prec,qrec,vpn,coepn,carter,rcar,kmoleo,cdif,kmdif,ocarter,odif,ipva,lic,taco,dpvat,secc,secr,iof,gris,rastr,aet:aetIn,cintas,lav,kmlav,admOv,lucroOv} = fuIn
-    const cont = contratante && !!selCavId
+    const cont = cs.cont && !!cs.cavId
     const vc=vcav, vr=cont?0:vimplIn
     const secrEf=cont?0:secr/100, aetEf=cont?0:aetIn, pnrEf=cont?0:prIn, cintasEf=cont?0:cintas
     const vidrEf=cont?100:vidr, rprEf=cont?0:rpr/100
@@ -337,7 +348,7 @@ export default function CustoKmPage() {
       custo_km_calculado: result.ckm,
       distancia_media: plano === 'f' ? fIn.dist : plano === 'p' ? pIn.dist : fuIn.dist,
       plano,
-      params: { selVId, selCavId, selImplId, contratante, fIn, pIn, fuIn },
+      params: { sel, fIn, pIn, fuIn },
       preco_diesel: plano === 'f' ? fIn.diesel : plano === 'p' ? pIn.diesel : fuIn.diesel,
       consumo_km_litro: plano === 'f' ? (fIn.useRealKml ? fIn.kmlC : d?.kmL ?? 0) : plano === 'p' ? pIn.kml : fuIn.kml,
       km_mes: plano === 'f' ? fIn.km : plano === 'p' ? pIn.km : fuIn.km,
@@ -351,10 +362,10 @@ export default function CustoKmPage() {
   }
 
   // ─── UI HELPERS ─────────────────────────────────────────────────────────────
-  const NF = ({label,value,onChange,step='0.01',hint,unit}:{label:string;value:number;onChange:(v:number)=>void;step?:string;hint?:string;unit?:string}) => (
+  const NF = ({label,value,onChange,step='0.01',hint,unit,placeholder='0'}:{label:string;value:number;onChange:(v:number)=>void;step?:string;hint?:string;unit?:string;placeholder?:string}) => (
     <div className="flex flex-col gap-1">
       <label className="text-[10px] font-medium tracking-widest uppercase text-text-muted">{label}{unit&&<span className="ml-1 normal-case tracking-normal">({unit})</span>}</label>
-      <input type="number" min="0" step={step} value={value||''} onChange={e=>onChange(parseFloat(e.target.value)||0)} placeholder="0"
+      <input type="number" min="0" step={step} value={value||''} onChange={e=>onChange(parseFloat(e.target.value)||0)} placeholder={placeholder}
         className="w-full px-3 py-2 rounded-md border border-border bg-[#FAF8F4] text-text-primary text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors" />
       {hint&&<p className="text-[10px] text-text-muted">{hint}</p>}
     </div>
@@ -395,38 +406,38 @@ export default function CustoKmPage() {
       <div className="grid grid-cols-3 gap-2 mb-2 sm:grid-cols-5">
         {vsActive.map(v => (
           <button key={v.id} onClick={()=>selectVehicle(v)}
-            className={`border rounded-xl p-2 text-center transition-all text-xs ${selVId===v.id&&!selCavId?'border-accent bg-accent text-bg':'border-border bg-bg text-text-primary hover:border-text-secondary'}`}>
+            className={`border rounded-xl p-2 text-center transition-all text-xs ${cs.vId===v.id&&!cs.cavId?'border-accent bg-accent text-bg':'border-border bg-bg text-text-primary hover:border-text-secondary'}`}>
             <div className="text-lg mb-1">{v.ico}</div>
             <div className="font-medium text-[11px] leading-tight">{v.lbl}</div>
-            <div className={`text-[10px] mt-0.5 ${selVId===v.id&&!selCavId?'text-bg/50':'text-text-muted'}`}>{v.kmL} km/L</div>
+            <div className={`text-[10px] mt-0.5 ${cs.vId===v.id&&!cs.cavId?'text-bg/50':'text-text-muted'}`}>{v.kmL} km/L</div>
           </button>
         ))}
         {cavActive.map(c => (
           <button key={c.id} onClick={()=>selectCavalo(c)}
-            className={`border rounded-xl p-2 text-center transition-all text-xs ${selCavId===c.id?'border-accent bg-accent text-bg':'border-border bg-bg text-text-primary hover:border-text-secondary'}`}>
+            className={`border rounded-xl p-2 text-center transition-all text-xs ${cs.cavId===c.id?'border-accent bg-accent text-bg':'border-border bg-bg text-text-primary hover:border-text-secondary'}`}>
             <div className="text-lg mb-1">{c.ico}</div>
             <div className="font-medium text-[11px] leading-tight">{c.lbl}</div>
-            <div className={`text-[10px] mt-0.5 ${selCavId===c.id?'text-bg/50':'text-text-muted'}`}>+ implemento</div>
+            <div className={`text-[10px] mt-0.5 ${cs.cavId===c.id?'text-bg/50':'text-text-muted'}`}>+ implemento</div>
           </button>
         ))}
       </div>
 
       {/* ── Implemento ── */}
-      {selCavId && implActive[selCavId] && (
+      {cs.cavId && implActive[cs.cavId] && (
         <div className="bg-surface border border-border rounded-xl p-3 mb-2">
           <p className="text-[10px] font-medium tracking-widest uppercase text-text-muted mb-2">2 · Implemento / Carreta</p>
           <div className="grid grid-cols-2 gap-2">
-            {implActive[selCavId].map(im => (
+            {implActive[cs.cavId].map(im => (
               <button key={im.id} onClick={()=>selectImpl(im, cavalo?.sal??2810)}
-                className={`border rounded-lg p-2.5 text-left transition-all ${selImplId===im.id?'border-accent bg-accent text-bg':'border-border bg-bg text-text-primary hover:border-text-secondary'}`}>
-                <div className={`font-semibold text-xs font-serif ${selImplId===im.id?'text-bg':'text-text-primary'}`}>{im.lbl}</div>
-                <div className={`text-[10px] mt-0.5 ${selImplId===im.id?'text-bg/50':'text-text-muted'}`}>{im.dim}</div>
-                <div className={`text-[10px] mt-0.5 ${selImplId===im.id?'text-bg/40':'text-text-muted'}`}>Cavalo R${(im.vc/1000).toFixed(0)}k + Impl R${(im.vr/1000).toFixed(0)}k · {im.kmL} km/L</div>
+                className={`border rounded-lg p-2.5 text-left transition-all ${cs.implId===im.id?'border-accent bg-accent text-bg':'border-border bg-bg text-text-primary hover:border-text-secondary'}`}>
+                <div className={`font-semibold text-xs font-serif ${cs.implId===im.id?'text-bg':'text-text-primary'}`}>{im.lbl}</div>
+                <div className={`text-[10px] mt-0.5 ${cs.implId===im.id?'text-bg/50':'text-text-muted'}`}>{im.dim}</div>
+                <div className={`text-[10px] mt-0.5 ${cs.implId===im.id?'text-bg/40':'text-text-muted'}`}>Cavalo R${(im.vc/1000).toFixed(0)}k + Impl R${(im.vr/1000).toFixed(0)}k · {im.kmL} km/L</div>
               </button>
             ))}
           </div>
           <label className="flex items-start gap-2 mt-3 p-2.5 bg-bg/60 border border-border rounded-lg cursor-pointer text-xs text-text-secondary">
-            <input type="checkbox" checked={contratante} onChange={e=>setContratante(e.target.checked)} className="mt-0.5 accent-accent w-3.5 h-3.5 flex-shrink-0" />
+            <input type="checkbox" checked={cs.cont} onChange={e=>setSel(s=>({...s,[plano]:{...s[plano],cont:e.target.checked}}))} className="mt-0.5 accent-accent w-3.5 h-3.5 flex-shrink-0" />
             <span>Carreta/implemento é do <strong className="text-text-primary">contratante</strong> — excluir todos os custos do reboque do cálculo</span>
           </label>
         </div>
@@ -564,10 +575,10 @@ export default function CustoKmPage() {
         <div className="grid grid-cols-2 gap-3">
           <NF label="ADM %" value={plano==='f'?+(fIn.admOv||0):plano==='p'?+(pIn.admOv||0):+(fuIn.admOv||0)}
             onChange={v=>{const s=v>0?String(v):'';plano==='f'?setFIn(p=>({...p,admOv:s})):plano==='p'?setPIn(p=>({...p,admOv:s})):setFuIn(p=>({...p,admOv:s}))}}
-            step="0.1" hint="Vazio = automático" />
+            step="0.1" hint="Vazio = automático" placeholder="Auto" />
           <NF label="Lucro %" value={plano==='f'?+(fIn.lucroOv||0):plano==='p'?+(pIn.lucroOv||0):+(fuIn.lucroOv||0)}
             onChange={v=>{const s=v>0?String(v):'';plano==='f'?setFIn(p=>({...p,lucroOv:s})):plano==='p'?setPIn(p=>({...p,lucroOv:s})):setFuIn(p=>({...p,lucroOv:s}))}}
-            step="0.1" hint="Vazio = automático" />
+            step="0.1" hint="Vazio = automático" placeholder="Auto" />
         </div>
       </div>
 
