@@ -107,6 +107,14 @@ CREATE TABLE IF NOT EXISTS public.transacoes (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Contratos do Agregado
+CREATE TABLE IF NOT EXISTS public.contratos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  agregado_id UUID REFERENCES public.agregados(id) ON DELETE CASCADE,
+  nome TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Vagas (Marketplace)
 CREATE TABLE IF NOT EXISTS public.vagas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -162,6 +170,7 @@ ALTER TABLE public.equipamentos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.motoristas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.custo_km_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transacoes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contratos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vagas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.candidaturas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.avaliacoes ENABLE ROW LEVEL SECURITY;
@@ -193,6 +202,9 @@ CREATE POLICY "custo_km_own" ON public.custo_km_config FOR ALL USING (auth.uid()
 
 -- Transações
 CREATE POLICY "transacoes_own" ON public.transacoes FOR ALL USING (auth.uid() = agregado_id);
+
+-- Contratos
+CREATE POLICY "contratos_own" ON public.contratos FOR ALL USING (auth.uid() = agregado_id);
 
 -- Vagas: public read (basic fields), full access for owner transportadora
 CREATE POLICY "vagas_public_read" ON public.vagas FOR SELECT USING (status = 'ativa');
