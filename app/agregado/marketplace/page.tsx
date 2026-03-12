@@ -11,16 +11,19 @@ interface VagaWithTransportadora extends Vaga {
   transportadoras: { razao_social: string | null; logo_url: string | null } | null
 }
 
-function getAnalise(vaga: Vaga, config: CustoKmConfig | null): { label: string; variant: 'success' | 'warning' | 'danger' | 'muted' } {
-  if (!config || !config.km_mes || config.km_mes === 0) return { label: 'Configure seu custo/km', variant: 'muted' }
-  const custoKmTotal = ((config.parcela_caminhao ?? 0) + (config.seguro ?? 0) + (config.licenciamento ?? 0) + (config.rastreador ?? 0) + (config.outros_fixos ?? 0)) / config.km_mes
+function recalcLegado(config: CustoKmConfig): number | null {
+  if (!config.km_mes || config.km_mes === 0) return null
+  return ((config.parcela_caminhao ?? 0) + (config.seguro ?? 0) + (config.licenciamento ?? 0) + (config.rastreador ?? 0) + (config.outros_fixos ?? 0)) / config.km_mes
     + (config.preco_diesel && config.consumo_km_litro ? config.preco_diesel / config.consumo_km_litro : 0)
     + ((config.manutencao_mensal ?? 0) + (config.pneus_mensal ?? 0) + (config.pedagio_mensal ?? 0) + (config.salario_motorista ?? 0)) / config.km_mes
+}
 
+function getAnalise(vaga: Vaga, config: CustoKmConfig | null): { label: string; variant: 'success' | 'warning' | 'danger' | 'muted' } {
+  if (!config) return { label: 'Configure seu custo/km', variant: 'muted' }
+  const custoKmTotal = config.custo_km_calculado ?? recalcLegado(config)
+  if (!custoKmTotal) return { label: 'Configure seu custo/km', variant: 'muted' }
   if (!vaga.valor_contrato || !vaga.km_estimado) return { label: 'Sem dados suficientes', variant: 'muted' }
-  const custoMes = custoKmTotal * vaga.km_estimado
-  const ratio = vaga.valor_contrato / custoMes
-
+  const ratio = vaga.valor_contrato / (custoKmTotal * vaga.km_estimado)
   if (ratio >= 1.15) return { label: 'Contrato saudável', variant: 'success' }
   if (ratio >= 1.0) return { label: 'No limite', variant: 'warning' }
   return { label: 'Abaixo do custo', variant: 'danger' }
