@@ -1,15 +1,14 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
-import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
-import { formatCurrency, TIPOS_VEICULO, type Vaga } from '@/lib/types'
+import { formatCurrency, type Vaga } from '@/lib/types'
 import {
-  Plus, MapPin, Truck, Users, Clock, ChevronRight,
-  Loader2, AlertCircle, Package
+  Plus, Truck, Users, ChevronRight,
+  Loader2, AlertCircle, Package, MoreVertical, Pause, Play, X as XIcon
 } from 'lucide-react'
 
 type StatusFilter = 'all' | 'ativa' | 'encerrada' | 'preenchida'
@@ -31,13 +30,85 @@ const STATUS_LABELS: Record<StatusFilter, string> = {
   preenchida: 'Preenchidas',
 }
 
+function VagaDropdown({ vaga, onUpdate }: {
+  vaga: VagaWithCount
+  onUpdate: (id: string, updates: Partial<Vaga>) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    if (open) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  async function handleToggle() {
+    setOpen(false)
+    const supabase = createClient()
+    const newStatus = vaga.status === 'ativa' ? 'encerrada' : 'ativa'
+    const { error } = await supabase.from('vagas').update({ status: newStatus }).eq('id', vaga.id)
+    if (!error) onUpdate(vaga.id, { status: newStatus })
+    else alert('Erro ao atualizar vaga')
+  }
+
+  async function handleEncerrar() {
+    setOpen(false)
+    if (!confirm('Deseja encerrar esta vaga? Candidaturas pendentes serão mantidas.')) return
+    const supabase = createClient()
+    const { error } = await supabase.from('vagas').update({ status: 'encerrada' }).eq('id', vaga.id)
+    if (!error) onUpdate(vaga.id, { status: 'encerrada' })
+    else alert('Erro ao encerrar vaga')
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(v => !v) }}
+        className="p-1.5 rounded-md hover:bg-[#E0DAD0] text-text-muted transition-colors"
+      >
+        <MoreVertical size={15} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-20 bg-surface border border-border rounded-xl shadow-lg py-1 min-w-[160px]">
+          {vaga.status !== 'encerrada' && (
+            <button
+              onClick={handleToggle}
+              className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-text-primary hover:bg-[#E0DAD0] transition-colors"
+            >
+              {vaga.status === 'ativa' ? <><Pause size={14} /> Pausar vaga</> : <><Play size={14} /> Reativar vaga</>}
+            </button>
+          )}
+          {vaga.status !== 'encerrada' && (
+            <button
+              onClick={handleEncerrar}
+              className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-danger hover:bg-danger-light transition-colors"
+            >
+              <XIcon size={14} /> Encerrar vaga
+            </button>
+          )}
+          {vaga.status === 'encerrada' && (
+            <button
+              onClick={handleToggle}
+              className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-success hover:bg-success-light transition-colors"
+            >
+              <Play size={14} /> Reativar vaga
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function TransportadoraVagasPage() {
   const router = useRouter()
   const [vagas, setVagas] = useState<VagaWithCount[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<StatusFilter>('all')
-  const [encerrandoId, setEncerrandoId] = useState<string | null>(null)
 
   const fetchVagas = useCallback(async () => {
     setLoading(true)
@@ -58,7 +129,6 @@ export default function TransportadoraVagasPage() {
       }
 
       const { data: vagasData, error: vagasError } = await query
-
       if (vagasError) throw vagasError
 
       if (!vagasData || vagasData.length === 0) {
@@ -67,7 +137,6 @@ export default function TransportadoraVagasPage() {
         return
       }
 
-      // Fetch candidaturas counts per vaga
       const vagaIds = vagasData.map(v => v.id)
       const { data: candidaturasData } = await supabase
         .from('candidaturas')
@@ -79,12 +148,7 @@ export default function TransportadoraVagasPage() {
         countMap[c.vaga_id] = (countMap[c.vaga_id] ?? 0) + 1
       })
 
-      const vagasWithCount: VagaWithCount[] = vagasData.map(v => ({
-        ...v,
-        candidaturas_count: countMap[v.id] ?? 0,
-      }))
-
-      setVagas(vagasWithCount)
+      setVagas(vagasData.map(v => ({ ...v, candidaturas_count: countMap[v.id] ?? 0 })))
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar vagas')
     } finally {
@@ -92,27 +156,16 @@ export default function TransportadoraVagasPage() {
     }
   }, [filter, router])
 
-  useEffect(() => {
-    fetchVagas()
-  }, [fetchVagas])
+  useEffect(() => { fetchVagas() }, [fetchVagas])
 
-  async function handleEncerrar(vagaId: string) {
-    if (!confirm('Deseja encerrar esta vaga? Candidaturas pendentes serão mantidas.')) return
-    setEncerrandoId(vagaId)
-    try {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from('vagas')
-        .update({ status: 'encerrada' })
-        .eq('id', vagaId)
+  function handleUpdate(id: string, updates: Partial<Vaga>) {
+    setVagas(prev => prev.map(v => v.id === id ? { ...v, ...updates } : v))
+  }
 
-      if (error) throw error
-      setVagas(prev => prev.map(v => v.id === vagaId ? { ...v, status: 'encerrada' } : v))
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Erro ao encerrar vaga')
-    } finally {
-      setEncerrandoId(null)
-    }
+  const statusBarColor = (status: Vaga['status']) => {
+    if (status === 'ativa') return 'bg-success'
+    if (status === 'encerrada') return 'bg-text-muted'
+    return 'bg-[#C8A84B]'
   }
 
   return (
@@ -120,7 +173,7 @@ export default function TransportadoraVagasPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="font-serif text-2xl font-bold text-text-primary">Vagas publicadas</h1>
+          <h1 className="font-serif text-2xl font-bold text-text-primary">Minhas Vagas</h1>
           <p className="text-text-secondary text-sm mt-0.5">Gerencie todas as suas vagas de agregado</p>
         </div>
         <Link href="/transportadora/vagas/new">
@@ -169,9 +222,7 @@ export default function TransportadoraVagasPage() {
             {filter === 'all' ? 'Nenhuma vaga publicada ainda' : `Nenhuma vaga ${STATUS_LABELS[filter].toLowerCase()}`}
           </p>
           <p className="text-sm text-text-muted mt-1 mb-5">
-            {filter === 'all'
-              ? 'Publique sua primeira vaga e comece a receber candidaturas de caminhoneiros.'
-              : 'Altere o filtro para ver outras vagas.'}
+            {filter === 'all' ? 'Publique sua primeira vaga e comece a receber candidaturas.' : 'Altere o filtro para ver outras vagas.'}
           </p>
           {filter === 'all' && (
             <Link href="/transportadora/vagas/new">
@@ -185,81 +236,64 @@ export default function TransportadoraVagasPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {vagas.map((vaga) => (
-            <Card key={vaga.id} padding="none" className="overflow-hidden hover:shadow-card-hover transition-shadow">
-              {/* Status color stripe */}
-              <div className={`h-1 ${vaga.status === 'ativa' ? 'bg-success' : vaga.status === 'encerrada' ? 'bg-warning' : 'bg-info'}`} />
-              <div className="p-4">
-                <div className="flex items-start justify-between gap-3 mb-3">
+            <div key={vaga.id} className="bg-surface border border-border rounded-xl overflow-hidden hover:shadow-card-hover transition-shadow flex">
+              {/* Left status bar */}
+              <div className={`w-1 flex-shrink-0 ${statusBarColor(vaga.status)}`} />
+              <div className="flex-1 p-4">
+                {/* Top row */}
+                <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-text-primary">{vaga.titulo || 'Vaga sem título'}</h3>
-                      <StatusBadge status={vaga.status} />
-                    </div>
-                    {(vaga.rota_origem || vaga.rota_destino) && (
-                      <div className="flex items-center gap-1 text-sm text-text-secondary mt-1">
-                        <MapPin size={13} className="text-text-muted flex-shrink-0" />
-                        <span className="truncate">
-                          {vaga.rota_origem}
-                          {vaga.rota_origem && vaga.rota_destino ? ' → ' : ''}
-                          {vaga.rota_destino}
-                        </span>
-                      </div>
+                    <p className="font-serif font-semibold text-text-primary text-base leading-tight">
+                      {vaga.rota_origem || '—'} → {vaga.rota_destino || '—'}
+                    </p>
+                    {vaga.titulo && (
+                      <p className="text-xs text-text-muted mt-0.5">{vaga.titulo}</p>
                     )}
                   </div>
-                  <p className="text-sm font-semibold text-success flex-shrink-0">
-                    {vaga.valor_contrato ? formatCurrency(vaga.valor_contrato) + '/mês' : '—'}
-                  </p>
-                </div>
-
-                {/* Tags */}
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {vaga.tipo_veiculo && (
-                    <div className="flex items-center gap-1 text-xs text-text-secondary bg-surface border border-border px-2.5 py-1 rounded-pill">
-                      <Truck size={11} />
-                      {vaga.tipo_veiculo}
-                    </div>
-                  )}
-                  {vaga.tipo_equipamento && (
-                    <div className="flex items-center gap-1 text-xs text-text-secondary bg-surface border border-border px-2.5 py-1 rounded-pill">
-                      <Package size={11} />
-                      {vaga.tipo_equipamento}
-                    </div>
-                  )}
-                  {vaga.periodo_meses && (
-                    <div className="flex items-center gap-1 text-xs text-text-secondary bg-surface border border-border px-2.5 py-1 rounded-pill">
-                      <Clock size={11} />
-                      {vaga.periodo_meses} {vaga.periodo_meses === 1 ? 'mês' : 'meses'}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-1 text-xs text-text-secondary bg-surface border border-border px-2.5 py-1 rounded-pill">
-                    <Users size={11} />
-                    {vaga.candidaturas_count} candidatura{vaga.candidaturas_count !== 1 ? 's' : ''}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <StatusBadge status={vaga.status} />
+                    <VagaDropdown vaga={vaga} onUpdate={handleUpdate} />
                   </div>
                 </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-2 pt-3 border-t border-border">
-                  <Link href={`/transportadora/vagas/${vaga.id}`} className="flex-1">
-                    <Button variant="secondary" size="sm" fullWidth className="gap-2">
-                      <Users size={14} />
-                      Ver candidatos
-                      <ChevronRight size={13} className="ml-auto" />
-                    </Button>
-                  </Link>
-                  {vaga.status === 'ativa' && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEncerrar(vaga.id)}
-                      loading={encerrandoId === vaga.id}
-                      className="text-warning border-warning/30 hover:bg-warning-light"
-                    >
-                      Encerrar
-                    </Button>
+                {/* Meta badges */}
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {vaga.tipo_veiculo && (
+                    <span className="flex items-center gap-1 text-xs text-text-secondary bg-bg border border-border px-2 py-0.5 rounded-pill">
+                      <Truck size={10} /> {vaga.tipo_veiculo}
+                    </span>
+                  )}
+                  {vaga.tipo_equipamento && (
+                    <span className="text-xs text-text-secondary bg-bg border border-border px-2 py-0.5 rounded-pill">
+                      {vaga.tipo_equipamento}
+                    </span>
+                  )}
+                  {vaga.km_estimado && (
+                    <span className="text-xs text-text-secondary bg-bg border border-border px-2 py-0.5 rounded-pill">
+                      {vaga.km_estimado} km
+                    </span>
+                  )}
+                  {vaga.valor_contrato && (
+                    <span className="text-xs font-medium text-success bg-success-light border border-success/20 px-2 py-0.5 rounded-pill">
+                      {formatCurrency(vaga.valor_contrato)}/mês
+                    </span>
                   )}
                 </div>
+
+                {/* Stats + action */}
+                <div className="flex items-center justify-between pt-3 border-t border-border">
+                  <span className="flex items-center gap-1.5 text-xs text-text-muted">
+                    <Users size={12} />
+                    {vaga.candidaturas_count} candidatura{vaga.candidaturas_count !== 1 ? 's' : ''}
+                  </span>
+                  <Link href={`/transportadora/candidatos?vaga=${vaga.id}`}>
+                    <button className="flex items-center gap-1.5 text-xs font-medium text-accent hover:underline">
+                      Ver candidatos <ChevronRight size={12} />
+                    </button>
+                  </Link>
+                </div>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       )}

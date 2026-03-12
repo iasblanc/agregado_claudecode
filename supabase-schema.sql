@@ -158,6 +158,32 @@ CREATE TABLE IF NOT EXISTS public.avaliacoes (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Candidaturas: pipeline e contrato status
+ALTER TABLE public.candidaturas
+  ADD COLUMN IF NOT EXISTS pipeline_status TEXT DEFAULT 'novo'
+    CHECK (pipeline_status IN ('novo','visualizado','em negociação',
+      'interesse enviado','aprovado','em formalização','contratado','recusado')),
+  ADD COLUMN IF NOT EXISTS contrato_status TEXT DEFAULT 'ativo'
+    CHECK (contrato_status IN ('ativo','suspenso','encerrado'));
+
+-- Mensagens de contrato (chat entre transportadora e motorista)
+CREATE TABLE IF NOT EXISTS public.contrato_mensagens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  candidatura_id UUID REFERENCES public.candidaturas(id) ON DELETE CASCADE,
+  de TEXT NOT NULL CHECK (de IN ('transportadora','motorista')),
+  texto TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Ocorrências de contrato
+CREATE TABLE IF NOT EXISTS public.contrato_ocorrencias (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  candidatura_id UUID REFERENCES public.candidaturas(id) ON DELETE CASCADE,
+  tipo TEXT NOT NULL,
+  descricao TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- =====================================================
 -- Row Level Security (RLS)
 -- =====================================================
@@ -174,6 +200,8 @@ ALTER TABLE public.contratos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vagas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.candidaturas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.avaliacoes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contrato_mensagens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contrato_ocorrencias ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: users see/edit their own
 CREATE POLICY "profiles_own" ON public.profiles FOR ALL USING (auth.uid() = id);
@@ -225,6 +253,20 @@ CREATE POLICY "candidaturas_transportadora_update" ON public.candidaturas FOR UP
 -- Avaliações
 CREATE POLICY "avaliacoes_read" ON public.avaliacoes FOR SELECT USING (auth.uid() IN (avaliador_id, avaliado_id));
 CREATE POLICY "avaliacoes_insert" ON public.avaliacoes FOR INSERT WITH CHECK (auth.uid() = avaliador_id);
+
+-- Contrato mensagens (transportadora que é dona da vaga)
+CREATE POLICY "msg_transp" ON public.contrato_mensagens FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.candidaturas c
+    JOIN public.vagas v ON v.id = c.vaga_id
+    WHERE c.id = candidatura_id AND auth.uid() = v.transportadora_id)
+);
+
+-- Contrato ocorrências
+CREATE POLICY "oc_transp" ON public.contrato_ocorrencias FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.candidaturas c
+    JOIN public.vagas v ON v.id = c.vaga_id
+    WHERE c.id = candidatura_id AND auth.uid() = v.transportadora_id)
+);
 
 -- Admin: full access to everything
 CREATE POLICY "admin_all_profiles" ON public.profiles FOR ALL USING (

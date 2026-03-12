@@ -127,6 +127,24 @@ export interface Candidatura {
   motorista_id: string | null
   status: 'pendente' | 'aceito' | 'recusado'
   mensagem: string | null
+  pipeline_status: 'novo' | 'visualizado' | 'em negociação' | 'interesse enviado' | 'aprovado' | 'em formalização' | 'contratado' | 'recusado'
+  contrato_status: 'ativo' | 'suspenso' | 'encerrado'
+  created_at: string
+}
+
+export interface ContratoMensagem {
+  id: string
+  candidatura_id: string
+  de: 'transportadora' | 'motorista'
+  texto: string
+  created_at: string
+}
+
+export interface ContratoOcorrencia {
+  id: string
+  candidatura_id: string
+  tipo: string
+  descricao: string
   created_at: string
 }
 
