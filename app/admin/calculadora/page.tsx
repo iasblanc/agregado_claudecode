@@ -19,16 +19,52 @@ const DEFAULT_VEICULOS = [
   // implementos c4x2
   {id:'cs12', tipo:'implemento', cavalo_id:'c4x2', lbl:'Carga Seca 12m', ico:null, dim:'12m·25,5t', km_l:3.3, km:10000, vc:620000, vr:200000, sal:null, pc:7,  pr:13, aet:0,  vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.8062, sort_order:20},
   {id:'pr12', tipo:'implemento', cavalo_id:'c4x2', lbl:'Prancha 12m',    ico:null, dim:'12m·22,5t', km_l:2.8, km:10000, vc:620000, vr:380000, sal:null, pc:7,  pr:13, aet:15, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.9862, sort_order:21},
+  {id:'fr12', tipo:'implemento', cavalo_id:'c4x2', lbl:'Frigorífico 12m',ico:null, dim:'12m·18,0t', km_l:3.0, km:10000, vc:620000, vr:280000, sal:null, pc:7,  pr:13, aet:0,  vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.9462, sort_order:22},
+  {id:'si12', tipo:'implemento', cavalo_id:'c4x2', lbl:'Sider 12m',      ico:null, dim:'12m·27,5t', km_l:3.2, km:10000, vc:620000, vr:160000, sal:null, pc:7,  pr:13, aet:0,  vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.7862, sort_order:23},
+  {id:'ba12', tipo:'implemento', cavalo_id:'c4x2', lbl:'Baú 12m',        ico:null, dim:'12m·23,5t', km_l:3.1, km:10000, vc:620000, vr:180000, sal:null, pc:7,  pr:13, aet:0,  vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.8262, sort_order:24},
+  {id:'gr12', tipo:'implemento', cavalo_id:'c4x2', lbl:'Graneleiro 12m', ico:null, dim:'12m·26,0t', km_l:3.2, km:10000, vc:620000, vr:150000, sal:null, pc:7,  pr:13, aet:0,  vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.7662, sort_order:25},
+  {id:'tn12', tipo:'implemento', cavalo_id:'c4x2', lbl:'Tanque',          ico:null, dim:'12m·30,0t', km_l:3.0, km:10000, vc:620000, vr:400000, sal:null, pc:7,  pr:13, aet:0,  vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.9062, sort_order:26},
   // implementos c6x2
   {id:'cs15', tipo:'implemento', cavalo_id:'c6x2', lbl:'Carga Seca 15m', ico:null, dim:'15m·30,5t', km_l:3.0, km:10000, vc:700000, vr:200000, sal:null, pc:11, pr:13, aet:0,  vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.8862, sort_order:30},
   {id:'pr15', tipo:'implemento', cavalo_id:'c6x2', lbl:'Prancha 15m',    ico:null, dim:'15m·26,3t', km_l:2.7, km:10000, vc:700000, vr:380000, sal:null, pc:11, pr:13, aet:15, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:1.057,  sort_order:31},
   {id:'at23', tipo:'implemento', cavalo_id:'c6x2', lbl:'Automotiva 23m', ico:null, dim:'23m·24,8t', km_l:2.7, km:10000, vc:700000, vr:400000, sal:null, pc:11, pr:13, aet:15, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:1.077,  sort_order:32},
   {id:'cg23', tipo:'implemento', cavalo_id:'c6x2', lbl:'Cegonha 23m',    ico:null, dim:'23m·24,8t', km_l:2.7, km:10000, vc:700000, vr:400000, sal:null, pc:11, pr:13, aet:15, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:1.077,  sort_order:33},
+  {id:'fr15', tipo:'implemento', cavalo_id:'c6x2', lbl:'Frigorífico 15m',ico:null, dim:'15m·22,0t', km_l:2.8, km:10000, vc:700000, vr:320000, sal:null, pc:11, pr:13, aet:0,  vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.9862, sort_order:34},
+  {id:'si15', tipo:'implemento', cavalo_id:'c6x2', lbl:'Sider 15m',      ico:null, dim:'15m·32,5t', km_l:3.0, km:10000, vc:700000, vr:180000, sal:null, pc:11, pr:13, aet:0,  vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.8262, sort_order:35},
+  {id:'ba15', tipo:'implemento', cavalo_id:'c6x2', lbl:'Baú 15m',        ico:null, dim:'15m·28,0t', km_l:2.9, km:10000, vc:700000, vr:200000, sal:null, pc:11, pr:13, aet:0,  vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.8462, sort_order:36},
+  {id:'gr15', tipo:'implemento', cavalo_id:'c6x2', lbl:'Graneleiro 15m', ico:null, dim:'15m·31,0t', km_l:3.0, km:10000, vc:700000, vr:170000, sal:null, pc:11, pr:13, aet:0,  vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.8062, sort_order:37},
+  {id:'tn15', tipo:'implemento', cavalo_id:'c6x2', lbl:'Tanque',          ico:null, dim:'15m·33,0t', km_l:2.8, km:10000, vc:700000, vr:450000, sal:null, pc:11, pr:13, aet:0,  vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.9662, sort_order:38},
   // implementos c6x4
-  {id:'pr17', tipo:'implemento', cavalo_id:'c6x4', lbl:'Prancha 17m',  ico:null, dim:'17m·39,8t', km_l:2.5, km:10000, vc:740000, vr:450000, sal:null, pc:11, pr:17, aet:15, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:1.167,  sort_order:40},
-  {id:'pr19', tipo:'implemento', cavalo_id:'c6x4', lbl:'Prancha 19m',  ico:null, dim:'19m·39,8t', km_l:2.5, km:10000, vc:740000, vr:480000, sal:null, pc:11, pr:17, aet:15, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:1.197,  sort_order:41},
-  {id:'bt24', tipo:'implemento', cavalo_id:'c6x4', lbl:'Bi-Trem 24m',  ico:null, dim:'24m·36,8t', km_l:2.5, km:10000, vc:740000, vr:320000, sal:null, pc:11, pr:25, aet:15, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:1.037,  sort_order:42},
-  {id:'rt27', tipo:'implemento', cavalo_id:'c6x4', lbl:'Rodotrem 27m', ico:null, dim:'27m·53,8t', km_l:2.5, km:10000, vc:740000, vr:320000, sal:null, pc:11, pr:25, aet:15, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:1.037,  sort_order:43},
+  {id:'pr17', tipo:'implemento', cavalo_id:'c6x4', lbl:'Prancha 17m',    ico:null, dim:'17m·39,8t', km_l:2.5, km:10000, vc:740000, vr:450000, sal:null, pc:11, pr:17, aet:15, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:1.167,  sort_order:40},
+  {id:'pr19', tipo:'implemento', cavalo_id:'c6x4', lbl:'Prancha 19m',    ico:null, dim:'19m·39,8t', km_l:2.5, km:10000, vc:740000, vr:480000, sal:null, pc:11, pr:17, aet:15, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:1.197,  sort_order:41},
+  {id:'bt24', tipo:'implemento', cavalo_id:'c6x4', lbl:'Bi-Trem 24m',    ico:null, dim:'24m·36,8t', km_l:2.5, km:10000, vc:740000, vr:320000, sal:null, pc:11, pr:25, aet:15, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:1.037,  sort_order:42},
+  {id:'rt27', tipo:'implemento', cavalo_id:'c6x4', lbl:'Rodotrem 27m',   ico:null, dim:'27m·53,8t', km_l:2.5, km:10000, vc:740000, vr:320000, sal:null, pc:11, pr:25, aet:15, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:1.037,  sort_order:43},
+  {id:'cs17', tipo:'implemento', cavalo_id:'c6x4', lbl:'Carga Seca 17m', ico:null, dim:'17m·41,5t', km_l:2.5, km:10000, vc:740000, vr:220000, sal:null, pc:11, pr:17, aet:0,  vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.9062, sort_order:44},
+  {id:'fr17', tipo:'implemento', cavalo_id:'c6x4', lbl:'Frigorífico 17m',ico:null, dim:'17m·36,0t', km_l:2.3, km:10000, vc:740000, vr:380000, sal:null, pc:11, pr:17, aet:0,  vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:1.047,  sort_order:45},
+  {id:'si17', tipo:'implemento', cavalo_id:'c6x4', lbl:'Sider 17m',      ico:null, dim:'17m·42,0t', km_l:2.5, km:10000, vc:740000, vr:200000, sal:null, pc:11, pr:17, aet:0,  vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.9262, sort_order:46},
+  // implementos 3/4
+  {id:'34cs', tipo:'implemento', cavalo_id:'34',   lbl:'Carga Seca', ico:null, dim:'4m·3,5t',  km_l:7.0, km:6000, vc:150000, vr:50000,  sal:null, pc:6,  pr:4,  aet:0, vidc:72, rpc:0.5, vidr:84,  rpr:0.6,    manut:0.65, sort_order:50},
+  {id:'34fr', tipo:'implemento', cavalo_id:'34',   lbl:'Frigorífico', ico:null, dim:'4m·2,5t',  km_l:6.5, km:6000, vc:150000, vr:90000,  sal:null, pc:6,  pr:4,  aet:0, vidc:72, rpc:0.5, vidr:84,  rpr:0.6,    manut:0.85, sort_order:51},
+  {id:'34si', tipo:'implemento', cavalo_id:'34',   lbl:'Sider',      ico:null, dim:'4m·3,5t',  km_l:7.0, km:6000, vc:150000, vr:60000,  sal:null, pc:6,  pr:4,  aet:0, vidc:72, rpc:0.5, vidr:84,  rpr:0.6,    manut:0.68, sort_order:52},
+  {id:'34ba', tipo:'implemento', cavalo_id:'34',   lbl:'Baú',        ico:null, dim:'4m·3,0t',  km_l:7.0, km:6000, vc:150000, vr:55000,  sal:null, pc:6,  pr:4,  aet:0, vidc:72, rpc:0.5, vidr:84,  rpr:0.6,    manut:0.67, sort_order:53},
+  // implementos toco
+  {id:'tccs', tipo:'implemento', cavalo_id:'toco', lbl:'Carga Seca', ico:null, dim:'6m·8,0t',  km_l:4.5, km:7000, vc:200000, vr:80000,  sal:null, pc:7,  pr:6,  aet:0, vidc:84, rpc:0.6, vidr:84,  rpr:0.6,    manut:0.72, sort_order:60},
+  {id:'tcfr', tipo:'implemento', cavalo_id:'toco', lbl:'Frigorífico', ico:null, dim:'6m·6,5t',  km_l:4.2, km:7000, vc:200000, vr:130000, sal:null, pc:7,  pr:6,  aet:0, vidc:84, rpc:0.6, vidr:84,  rpr:0.6,    manut:0.90, sort_order:61},
+  {id:'tcsi', tipo:'implemento', cavalo_id:'toco', lbl:'Sider',      ico:null, dim:'6m·9,0t',  km_l:4.5, km:7000, vc:200000, vr:90000,  sal:null, pc:7,  pr:6,  aet:0, vidc:84, rpc:0.6, vidr:84,  rpr:0.6,    manut:0.74, sort_order:62},
+  {id:'tcba', tipo:'implemento', cavalo_id:'toco', lbl:'Baú',        ico:null, dim:'6m·7,5t',  km_l:4.5, km:7000, vc:200000, vr:85000,  sal:null, pc:7,  pr:6,  aet:0, vidc:84, rpc:0.6, vidr:84,  rpr:0.6,    manut:0.73, sort_order:63},
+  {id:'tcgr', tipo:'implemento', cavalo_id:'toco', lbl:'Graneleiro', ico:null, dim:'6m·9,5t',  km_l:4.5, km:7000, vc:200000, vr:70000,  sal:null, pc:7,  pr:6,  aet:0, vidc:84, rpc:0.6, vidr:84,  rpr:0.6,    manut:0.70, sort_order:64},
+  // implementos tk8
+  {id:'t8cs', tipo:'implemento', cavalo_id:'tk8',  lbl:'Carga Seca', ico:null, dim:'8m·13,0t', km_l:5.5, km:8200, vc:300000, vr:110000, sal:null, pc:7,  pr:0,  aet:0, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.78, sort_order:70},
+  {id:'t8fr', tipo:'implemento', cavalo_id:'tk8',  lbl:'Frigorífico', ico:null, dim:'8m·10,0t', km_l:5.0, km:8200, vc:300000, vr:170000, sal:null, pc:7,  pr:0,  aet:0, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.95, sort_order:71},
+  {id:'t8si', tipo:'implemento', cavalo_id:'tk8',  lbl:'Sider',      ico:null, dim:'8m·14,0t', km_l:5.5, km:8200, vc:300000, vr:120000, sal:null, pc:7,  pr:0,  aet:0, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.80, sort_order:72},
+  {id:'t8ba', tipo:'implemento', cavalo_id:'tk8',  lbl:'Baú',        ico:null, dim:'8m·12,0t', km_l:5.5, km:8200, vc:300000, vr:115000, sal:null, pc:7,  pr:0,  aet:0, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.79, sort_order:73},
+  {id:'t8gr', tipo:'implemento', cavalo_id:'tk8',  lbl:'Graneleiro', ico:null, dim:'8m·15,0t', km_l:5.5, km:8200, vc:300000, vr:100000, sal:null, pc:7,  pr:0,  aet:0, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.76, sort_order:74},
+  // implementos tk9
+  {id:'t9cs', tipo:'implemento', cavalo_id:'tk9',  lbl:'Carga Seca', ico:null, dim:'9m·14,0t', km_l:5.0, km:8200, vc:300000, vr:140000, sal:null, pc:11, pr:0,  aet:0, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.82, sort_order:80},
+  {id:'t9fr', tipo:'implemento', cavalo_id:'tk9',  lbl:'Frigorífico', ico:null, dim:'9m·11,0t', km_l:4.5, km:8200, vc:300000, vr:200000, sal:null, pc:11, pr:0,  aet:0, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.99, sort_order:81},
+  {id:'t9si', tipo:'implemento', cavalo_id:'tk9',  lbl:'Sider',      ico:null, dim:'9m·15,0t', km_l:5.0, km:8200, vc:300000, vr:150000, sal:null, pc:11, pr:0,  aet:0, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.84, sort_order:82},
+  {id:'t9ba', tipo:'implemento', cavalo_id:'tk9',  lbl:'Baú',        ico:null, dim:'9m·13,0t', km_l:5.0, km:8200, vc:300000, vr:145000, sal:null, pc:11, pr:0,  aet:0, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.83, sort_order:83},
+  {id:'t9gr', tipo:'implemento', cavalo_id:'tk9',  lbl:'Graneleiro', ico:null, dim:'9m·16,0t', km_l:5.0, km:8200, vc:300000, vr:130000, sal:null, pc:11, pr:0,  aet:0, vidc:96, rpc:0.6, vidr:100, rpr:0.7344, manut:0.80, sort_order:84},
 ]
 
 const DEFAULT_K = {

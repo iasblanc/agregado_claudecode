@@ -34,6 +34,13 @@ export interface Veiculo {
   created_at: string
 }
 
+export interface Contrato {
+  id: string
+  agregado_id: string
+  nome: string
+  created_at: string
+}
+
 export interface Equipamento {
   id: string
   agregado_id: string

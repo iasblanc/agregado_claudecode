@@ -29,20 +29,60 @@ const CAVALOS: CD[] = [
 ]
 const IMPL: Record<string,ID[]> = {
   c4x2:[
-    {id:'cs12',lbl:'Carga Seca 12m',ico:'🚜',dim:'12m · 25,5t',vc:620000,vr:200000,km:10000,kmL:3.3,sal:2810,pc:7, pr:13,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.8062},
-    {id:'pr12',lbl:'Prancha 12m',   ico:'🚜',dim:'12m · 22,5t',vc:620000,vr:380000,km:10000,kmL:2.8,sal:2810,pc:7, pr:13,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.9862},
+    {id:'cs12',lbl:'Carga Seca 12m', ico:'🚜',dim:'12m · 25,5t',vc:620000,vr:200000,km:10000,kmL:3.3,sal:2810,pc:7, pr:13,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.8062},
+    {id:'pr12',lbl:'Prancha 12m',    ico:'🚜',dim:'12m · 22,5t',vc:620000,vr:380000,km:10000,kmL:2.8,sal:2810,pc:7, pr:13,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.9862},
+    {id:'fr12',lbl:'Frigorífico 12m',ico:'🚜',dim:'12m · 18,0t',vc:620000,vr:280000,km:10000,kmL:3.0,sal:2810,pc:7, pr:13,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.9462},
+    {id:'si12',lbl:'Sider 12m',      ico:'🚜',dim:'12m · 27,5t',vc:620000,vr:160000,km:10000,kmL:3.2,sal:2810,pc:7, pr:13,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.7862},
+    {id:'ba12',lbl:'Baú 12m',        ico:'🚜',dim:'12m · 23,5t',vc:620000,vr:180000,km:10000,kmL:3.1,sal:2810,pc:7, pr:13,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.8262},
+    {id:'gr12',lbl:'Graneleiro 12m', ico:'🚜',dim:'12m · 26,0t',vc:620000,vr:150000,km:10000,kmL:3.2,sal:2810,pc:7, pr:13,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.7662},
+    {id:'tn12',lbl:'Tanque',         ico:'🚜',dim:'12m · 30,0t',vc:620000,vr:400000,km:10000,kmL:3.0,sal:2810,pc:7, pr:13,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.9062},
   ],
   c6x2:[
-    {id:'cs15',lbl:'Carga Seca 15m',ico:'🚜',dim:'15m · 30,5t',vc:700000,vr:200000,km:10000,kmL:3.0,sal:2810,pc:11,pr:13,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.8862},
-    {id:'pr15',lbl:'Prancha 15m',   ico:'🚜',dim:'15m · 26,3t',vc:700000,vr:380000,km:10000,kmL:2.7,sal:2810,pc:11,pr:13,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.057 },
-    {id:'at23',lbl:'Automotiva 23m',ico:'🚜',dim:'23m · 24,8t',vc:700000,vr:400000,km:10000,kmL:2.7,sal:2810,pc:11,pr:13,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.077 },
-    {id:'cg23',lbl:'Cegonha 23m',   ico:'🚜',dim:'23m · 24,8t',vc:700000,vr:400000,km:10000,kmL:2.7,sal:2810,pc:11,pr:13,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.077 },
+    {id:'cs15',lbl:'Carga Seca 15m', ico:'🚜',dim:'15m · 30,5t',vc:700000,vr:200000,km:10000,kmL:3.0,sal:2810,pc:11,pr:13,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.8862},
+    {id:'pr15',lbl:'Prancha 15m',    ico:'🚜',dim:'15m · 26,3t',vc:700000,vr:380000,km:10000,kmL:2.7,sal:2810,pc:11,pr:13,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.057 },
+    {id:'at23',lbl:'Automotiva 23m', ico:'🚜',dim:'23m · 24,8t',vc:700000,vr:400000,km:10000,kmL:2.7,sal:2810,pc:11,pr:13,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.077 },
+    {id:'cg23',lbl:'Cegonha 23m',    ico:'🚜',dim:'23m · 24,8t',vc:700000,vr:400000,km:10000,kmL:2.7,sal:2810,pc:11,pr:13,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.077 },
+    {id:'fr15',lbl:'Frigorífico 15m',ico:'🚜',dim:'15m · 22,0t',vc:700000,vr:320000,km:10000,kmL:2.8,sal:2810,pc:11,pr:13,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.9862},
+    {id:'si15',lbl:'Sider 15m',      ico:'🚜',dim:'15m · 32,5t',vc:700000,vr:180000,km:10000,kmL:3.0,sal:2810,pc:11,pr:13,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.8262},
+    {id:'ba15',lbl:'Baú 15m',        ico:'🚜',dim:'15m · 28,0t',vc:700000,vr:200000,km:10000,kmL:2.9,sal:2810,pc:11,pr:13,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.8462},
+    {id:'gr15',lbl:'Graneleiro 15m', ico:'🚜',dim:'15m · 31,0t',vc:700000,vr:170000,km:10000,kmL:3.0,sal:2810,pc:11,pr:13,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.8062},
+    {id:'tn15',lbl:'Tanque',         ico:'🚜',dim:'15m · 33,0t',vc:700000,vr:450000,km:10000,kmL:2.8,sal:2810,pc:11,pr:13,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.9662},
   ],
   c6x4:[
-    {id:'pr17',lbl:'Prancha 17m',  ico:'🚜',dim:'17m · 39,8t',vc:740000,vr:450000,km:10000,kmL:2.5,sal:3000,pc:11,pr:17,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.167},
-    {id:'pr19',lbl:'Prancha 19m',  ico:'🚜',dim:'19m · 39,8t',vc:740000,vr:480000,km:10000,kmL:2.5,sal:3000,pc:11,pr:17,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.197},
-    {id:'bt24',lbl:'Bi-Trem 24m',  ico:'🚜',dim:'24m · 36,8t',vc:740000,vr:320000,km:10000,kmL:2.5,sal:3000,pc:11,pr:25,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.037},
-    {id:'rt27',lbl:'Rodotrem 27m', ico:'🚜',dim:'27m · 53,8t',vc:740000,vr:320000,km:10000,kmL:2.5,sal:3000,pc:11,pr:25,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.037},
+    {id:'pr17',lbl:'Prancha 17m',    ico:'🚜',dim:'17m · 39,8t',vc:740000,vr:450000,km:10000,kmL:2.5,sal:3000,pc:11,pr:17,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.167},
+    {id:'pr19',lbl:'Prancha 19m',    ico:'🚜',dim:'19m · 39,8t',vc:740000,vr:480000,km:10000,kmL:2.5,sal:3000,pc:11,pr:17,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.197},
+    {id:'bt24',lbl:'Bi-Trem 24m',    ico:'🚜',dim:'24m · 36,8t',vc:740000,vr:320000,km:10000,kmL:2.5,sal:3000,pc:11,pr:25,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.037},
+    {id:'rt27',lbl:'Rodotrem 27m',   ico:'🚜',dim:'27m · 53,8t',vc:740000,vr:320000,km:10000,kmL:2.5,sal:3000,pc:11,pr:25,aet:15,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.037},
+    {id:'cs17',lbl:'Carga Seca 17m', ico:'🚜',dim:'17m · 41,5t',vc:740000,vr:220000,km:10000,kmL:2.5,sal:3000,pc:11,pr:17,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.9062},
+    {id:'fr17',lbl:'Frigorífico 17m',ico:'🚜',dim:'17m · 36,0t',vc:740000,vr:380000,km:10000,kmL:2.3,sal:3000,pc:11,pr:17,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:1.047},
+    {id:'si17',lbl:'Sider 17m',      ico:'🚜',dim:'17m · 42,0t',vc:740000,vr:200000,km:10000,kmL:2.5,sal:3000,pc:11,pr:17,aet:0, vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.9262},
+  ],
+  '34':[
+    {id:'34cs',lbl:'Carga Seca', ico:'📦',dim:'4m · 3,5t', vc:150000,vr:50000, km:6000,kmL:7.0,sal:2200,pc:6,pr:4,aet:0,vidc:72,rpc:.5,vidr:84,rpr:.6,manut:.65},
+    {id:'34fr',lbl:'Frigorífico',ico:'🧊',dim:'4m · 2,5t', vc:150000,vr:90000, km:6000,kmL:6.5,sal:2200,pc:6,pr:4,aet:0,vidc:72,rpc:.5,vidr:84,rpr:.6,manut:.85},
+    {id:'34si',lbl:'Sider',      ico:'🚛',dim:'4m · 3,5t', vc:150000,vr:60000, km:6000,kmL:7.0,sal:2200,pc:6,pr:4,aet:0,vidc:72,rpc:.5,vidr:84,rpr:.6,manut:.68},
+    {id:'34ba',lbl:'Baú',        ico:'📫',dim:'4m · 3,0t', vc:150000,vr:55000, km:6000,kmL:7.0,sal:2200,pc:6,pr:4,aet:0,vidc:72,rpc:.5,vidr:84,rpr:.6,manut:.67},
+  ],
+  toco:[
+    {id:'tccs',lbl:'Carga Seca', ico:'📦',dim:'6m · 8,0t', vc:200000,vr:80000, km:7000,kmL:4.5,sal:2810,pc:7,pr:6,aet:0,vidc:84,rpc:.6,vidr:84,rpr:.6,manut:.72},
+    {id:'tcfr',lbl:'Frigorífico',ico:'🧊',dim:'6m · 6,5t', vc:200000,vr:130000,km:7000,kmL:4.2,sal:2810,pc:7,pr:6,aet:0,vidc:84,rpc:.6,vidr:84,rpr:.6,manut:.90},
+    {id:'tcsi',lbl:'Sider',      ico:'🚛',dim:'6m · 9,0t', vc:200000,vr:90000, km:7000,kmL:4.5,sal:2810,pc:7,pr:6,aet:0,vidc:84,rpc:.6,vidr:84,rpr:.6,manut:.74},
+    {id:'tcba',lbl:'Baú',        ico:'📫',dim:'6m · 7,5t', vc:200000,vr:85000, km:7000,kmL:4.5,sal:2810,pc:7,pr:6,aet:0,vidc:84,rpc:.6,vidr:84,rpr:.6,manut:.73},
+    {id:'tcgr',lbl:'Graneleiro', ico:'🌾',dim:'6m · 9,5t', vc:200000,vr:70000, km:7000,kmL:4.5,sal:2810,pc:7,pr:6,aet:0,vidc:84,rpc:.6,vidr:84,rpr:.6,manut:.70},
+  ],
+  tk8:[
+    {id:'t8cs',lbl:'Carga Seca', ico:'📦',dim:'8m · 13,0t',vc:300000,vr:110000,km:8200,kmL:5.5,sal:2810,pc:7, pr:0,aet:0,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.78},
+    {id:'t8fr',lbl:'Frigorífico',ico:'🧊',dim:'8m · 10,0t',vc:300000,vr:170000,km:8200,kmL:5.0,sal:2810,pc:7, pr:0,aet:0,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.95},
+    {id:'t8si',lbl:'Sider',      ico:'🚛',dim:'8m · 14,0t',vc:300000,vr:120000,km:8200,kmL:5.5,sal:2810,pc:7, pr:0,aet:0,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.80},
+    {id:'t8ba',lbl:'Baú',        ico:'📫',dim:'8m · 12,0t',vc:300000,vr:115000,km:8200,kmL:5.5,sal:2810,pc:7, pr:0,aet:0,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.79},
+    {id:'t8gr',lbl:'Graneleiro', ico:'🌾',dim:'8m · 15,0t',vc:300000,vr:100000,km:8200,kmL:5.5,sal:2810,pc:7, pr:0,aet:0,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.76},
+  ],
+  tk9:[
+    {id:'t9cs',lbl:'Carga Seca', ico:'📦',dim:'9m · 14,0t',vc:300000,vr:140000,km:8200,kmL:5.0,sal:2810,pc:11,pr:0,aet:0,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.82},
+    {id:'t9fr',lbl:'Frigorífico',ico:'🧊',dim:'9m · 11,0t',vc:300000,vr:200000,km:8200,kmL:4.5,sal:2810,pc:11,pr:0,aet:0,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.99},
+    {id:'t9si',lbl:'Sider',      ico:'🚛',dim:'9m · 15,0t',vc:300000,vr:150000,km:8200,kmL:5.0,sal:2810,pc:11,pr:0,aet:0,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.84},
+    {id:'t9ba',lbl:'Baú',        ico:'📫',dim:'9m · 13,0t',vc:300000,vr:145000,km:8200,kmL:5.0,sal:2810,pc:11,pr:0,aet:0,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.83},
+    {id:'t9gr',lbl:'Graneleiro', ico:'🌾',dim:'9m · 16,0t',vc:300000,vr:130000,km:8200,kmL:5.0,sal:2810,pc:11,pr:0,aet:0,vidc:96,rpc:.6,vidr:100,rpr:.7344,manut:.80},
   ],
 }
 const ADM_TBL = [
@@ -118,6 +158,28 @@ const DEF_V = VS[4] // Truck 8m
 const mkFIn = (v: VD): FIn => ({diesel:5.80,km:v.km,dist:500,admOv:'',lucroOv:'',useRealKml:false,kmlC:0})
 const mkPIn = (v: VD): PIn => ({diesel:5.80,kml:v.kmL,km:v.km,dist:500,vcav:v.vc,vimpl:v.vr,sal:v.sal,enc:99.18,dias:24,remvar:.40,manut:v.manut??.65,ppneu:2300,qpneu:v.pc+v.pr,pcav:v.pc,vpneu:275000,admOv:'',lucroOv:''})
 const mkFUIn = (v: VD): FUIn => ({diesel:5.80,arlap:1.52,kml:v.kmL,km:v.km,dist:500,vel:61,vcav:v.vc,vimpl:v.vr,vidc:v.vidc,vidr:v.vidr,rpc:v.rpc*100,rpr:v.rpr*100,txcap:3.5,salm:v.sal,salmec:1951.78,plr:1497.68,enc:99.18,vmec:3,dias:24,horas:9.5,ppq:.12,pc:v.pc,pr:v.pr,ppn:2300,prec:650,qrec:2,vpn:275000,coepn:.07,carter:35,rcar:9,kmoleo:30000,cdif:47.2,kmdif:53000,ocarter:16,odif:20.23,ipva:1.5,lic:69.12,taco:170,dpvat:110.38,secc:.5,secr:.5,iof:7.38,gris:22.5,rastr:100,aet:v.aet,cintas:256.67,lav:290,kmlav:15000,admOv:'',lucroOv:''})
+
+// ─── UI HELPERS (nível de módulo para evitar perda de foco) ──────────────────
+const NF = ({label,value,onChange,step='0.01',hint,unit,placeholder='0'}:{label:string;value:number;onChange:(v:number)=>void;step?:string;hint?:string;unit?:string;placeholder?:string}) => (
+  <div className="flex flex-col gap-1">
+    <label className="text-[10px] font-medium tracking-widest uppercase text-text-muted">{label}{unit&&<span className="ml-1 normal-case tracking-normal">({unit})</span>}</label>
+    <input type="number" min="0" step={step} value={value||''} onChange={e=>onChange(parseFloat(e.target.value)||0)} placeholder={placeholder}
+      className="w-full px-3 py-2 rounded-md border border-border bg-[#FAF8F4] text-text-primary text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors" />
+    {hint&&<p className="text-[10px] text-text-muted">{hint}</p>}
+  </div>
+)
+const SL = ({label}:{label:string}) => (
+  <div className="flex items-center gap-3 mt-7 mb-3">
+    <span className="text-[10px] font-medium tracking-widest uppercase text-text-muted whitespace-nowrap">{label}</span>
+    <div className="flex-1 h-px bg-border"/>
+  </div>
+)
+const BDR = ({label,value}:{label:string;value:number}) => (
+  <div className="flex justify-between items-center py-1 border-b border-border/40 text-sm">
+    <span className="text-text-secondary">{label}</span>
+    <span className="font-mono text-xs text-text-primary">{fR(value)}</span>
+  </div>
+)
 
 // ─── COMPONENTE ───────────────────────────────────────────────────────────────
 export default function CustoKmPage() {
@@ -200,15 +262,24 @@ export default function CustoKmPage() {
       const impl = implActive[cs.cavId]?.find(i => i.id === cs.implId)
       if (impl) return impl
     }
+    if (!cs.cavId && cs.vId && cs.implId) {
+      const impl = implActive[cs.vId]?.find(i => i.id === cs.implId)
+      if (impl) return impl
+    }
     if (cs.vId) return vsActive.find(v => v.id === cs.vId) ?? null
     return null
   }
 
   function selectVehicle(v: VD) {
-    setSel(s => ({...s, [plano]: {vId:v.id, cavId:'', implId:'', cont:false}}))
-    if (plano==='f') setFIn(p=>({...p, km:v.km}))
-    if (plano==='p') setPIn(p=>({...p, km:v.km, kml:v.kmL, vcav:v.vc, vimpl:v.vr, sal:v.sal, qpneu:v.pc+v.pr, pcav:v.pc, manut:v.manut??.65}))
-    if (plano==='fu') setFuIn(p=>({...p, km:v.km, kml:v.kmL, vcav:v.vc, vimpl:v.vr, salm:v.sal, pc:v.pc, pr:v.pr, aet:v.aet, vidc:v.vidc, vidr:v.vidr, rpc:v.rpc*100, rpr:v.rpr*100}))
+    const firstImpl = implActive[v.id]?.[0]
+    setSel(s => ({...s, [plano]: {vId:v.id, cavId:'', implId:firstImpl?.id??'', cont:false}}))
+    if (firstImpl) {
+      applyImpl(firstImpl, firstImpl.sal)
+    } else {
+      if (plano==='f') setFIn(p=>({...p, km:v.km}))
+      if (plano==='p') setPIn(p=>({...p, km:v.km, kml:v.kmL, vcav:v.vc, vimpl:v.vr, sal:v.sal, qpneu:v.pc+v.pr, pcav:v.pc, manut:v.manut??.65}))
+      if (plano==='fu') setFuIn(p=>({...p, km:v.km, kml:v.kmL, vcav:v.vc, vimpl:v.vr, salm:v.sal, pc:v.pc, pr:v.pr, aet:v.aet, vidc:v.vidc, vidr:v.vidr, rpc:v.rpc*100, rpr:v.rpr*100}))
+    }
     setResult(null); setPercResult(null)
   }
   function selectCavalo(c: CD) {
@@ -361,28 +432,6 @@ export default function CustoKmPage() {
     setTimeout(() => setSaved(false), 3000)
   }
 
-  // ─── UI HELPERS ─────────────────────────────────────────────────────────────
-  const NF = ({label,value,onChange,step='0.01',hint,unit,placeholder='0'}:{label:string;value:number;onChange:(v:number)=>void;step?:string;hint?:string;unit?:string;placeholder?:string}) => (
-    <div className="flex flex-col gap-1">
-      <label className="text-[10px] font-medium tracking-widest uppercase text-text-muted">{label}{unit&&<span className="ml-1 normal-case tracking-normal">({unit})</span>}</label>
-      <input type="number" min="0" step={step} value={value||''} onChange={e=>onChange(parseFloat(e.target.value)||0)} placeholder={placeholder}
-        className="w-full px-3 py-2 rounded-md border border-border bg-[#FAF8F4] text-text-primary text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors" />
-      {hint&&<p className="text-[10px] text-text-muted">{hint}</p>}
-    </div>
-  )
-  const SL = ({label}:{label:string}) => (
-    <div className="flex items-center gap-3 mt-7 mb-3">
-      <span className="text-[10px] font-medium tracking-widest uppercase text-text-muted whitespace-nowrap">{label}</span>
-      <div className="flex-1 h-px bg-border"/>
-    </div>
-  )
-  const BDR = ({label,value}:{label:string;value:number}) => (
-    <div className="flex justify-between items-center py-1 border-b border-border/40 text-sm">
-      <span className="text-text-secondary">{label}</span>
-      <span className="font-mono text-xs text-text-primary">{fR(value)}</span>
-    </div>
-  )
-
   // ─── RENDER ─────────────────────────────────────────────────────────────────
   return (
     <div className="max-w-2xl mx-auto px-4 py-5 pb-20">
@@ -404,14 +453,18 @@ export default function CustoKmPage() {
       {/* ── Veículo ── */}
       <SL label="1 · Tipo de veículo" />
       <div className="grid grid-cols-3 gap-2 mb-2 sm:grid-cols-5">
-        {vsActive.map(v => (
-          <button key={v.id} onClick={()=>selectVehicle(v)}
-            className={`border rounded-xl p-2 text-center transition-all text-xs ${cs.vId===v.id&&!cs.cavId?'border-accent bg-accent text-bg':'border-border bg-bg text-text-primary hover:border-text-secondary'}`}>
-            <div className="text-lg mb-1">{v.ico}</div>
-            <div className="font-medium text-[11px] leading-tight">{v.lbl}</div>
-            <div className={`text-[10px] mt-0.5 ${cs.vId===v.id&&!cs.cavId?'text-bg/50':'text-text-muted'}`}>{v.kmL} km/L</div>
-          </button>
-        ))}
+        {vsActive.map(v => {
+          const hasImpl = !!implActive[v.id]?.length
+          const isSelected = cs.vId===v.id&&!cs.cavId
+          return (
+            <button key={v.id} onClick={()=>selectVehicle(v)}
+              className={`border rounded-xl p-2 text-center transition-all text-xs ${isSelected?'border-accent bg-accent text-bg':'border-border bg-bg text-text-primary hover:border-text-secondary'}`}>
+              <div className="text-lg mb-1">{v.ico}</div>
+              <div className="font-medium text-[11px] leading-tight">{v.lbl}</div>
+              <div className={`text-[10px] mt-0.5 ${isSelected?'text-bg/50':'text-text-muted'}`}>{hasImpl?'+ carroceria':`${v.kmL} km/L`}</div>
+            </button>
+          )
+        })}
         {cavActive.map(c => (
           <button key={c.id} onClick={()=>selectCavalo(c)}
             className={`border rounded-xl p-2 text-center transition-all text-xs ${cs.cavId===c.id?'border-accent bg-accent text-bg':'border-border bg-bg text-text-primary hover:border-text-secondary'}`}>
@@ -422,7 +475,7 @@ export default function CustoKmPage() {
         ))}
       </div>
 
-      {/* ── Implemento ── */}
+      {/* ── Implemento (cavalo + carreta) ── */}
       {cs.cavId && implActive[cs.cavId] && (
         <div className="bg-surface border border-border rounded-xl p-3 mb-2">
           <p className="text-[10px] font-medium tracking-widest uppercase text-text-muted mb-2">2 · Implemento / Carreta</p>
@@ -440,6 +493,23 @@ export default function CustoKmPage() {
             <input type="checkbox" checked={cs.cont} onChange={e=>setSel(s=>({...s,[plano]:{...s[plano],cont:e.target.checked}}))} className="mt-0.5 accent-accent w-3.5 h-3.5 flex-shrink-0" />
             <span>Carreta/implemento é do <strong className="text-text-primary">contratante</strong> — excluir todos os custos do reboque do cálculo</span>
           </label>
+        </div>
+      )}
+
+      {/* ── Carroceria (veículos simples com opções) ── */}
+      {!cs.cavId && cs.vId && implActive[cs.vId] && (
+        <div className="bg-surface border border-border rounded-xl p-3 mb-2">
+          <p className="text-[10px] font-medium tracking-widest uppercase text-text-muted mb-2">2 · Tipo de carroceria</p>
+          <div className="grid grid-cols-2 gap-2">
+            {implActive[cs.vId].map(im => (
+              <button key={im.id} onClick={()=>selectImpl(im, im.sal)}
+                className={`border rounded-lg p-2.5 text-left transition-all ${cs.implId===im.id?'border-accent bg-accent text-bg':'border-border bg-bg text-text-primary hover:border-text-secondary'}`}>
+                <div className={`font-semibold text-xs font-serif ${cs.implId===im.id?'text-bg':'text-text-primary'}`}>{im.ico} {im.lbl}</div>
+                <div className={`text-[10px] mt-0.5 ${cs.implId===im.id?'text-bg/50':'text-text-muted'}`}>{im.dim}</div>
+                <div className={`text-[10px] mt-0.5 ${cs.implId===im.id?'text-bg/40':'text-text-muted'}`}>{im.kmL} km/L</div>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -573,12 +643,22 @@ export default function CustoKmPage() {
         <p className="font-serif text-sm font-medium text-text-primary mb-0.5">ADM e Margem de Lucro</p>
         <p className="text-[11px] text-text-muted mb-3">Deixe em branco para cálculo automático pela distância média da viagem.</p>
         <div className="grid grid-cols-2 gap-3">
-          <NF label="ADM %" value={plano==='f'?+(fIn.admOv||0):plano==='p'?+(pIn.admOv||0):+(fuIn.admOv||0)}
-            onChange={v=>{const s=v>0?String(v):'';plano==='f'?setFIn(p=>({...p,admOv:s})):plano==='p'?setPIn(p=>({...p,admOv:s})):setFuIn(p=>({...p,admOv:s}))}}
-            step="0.1" hint="Vazio = automático" placeholder="Auto" />
-          <NF label="Lucro %" value={plano==='f'?+(fIn.lucroOv||0):plano==='p'?+(pIn.lucroOv||0):+(fuIn.lucroOv||0)}
-            onChange={v=>{const s=v>0?String(v):'';plano==='f'?setFIn(p=>({...p,lucroOv:s})):plano==='p'?setPIn(p=>({...p,lucroOv:s})):setFuIn(p=>({...p,lucroOv:s}))}}
-            step="0.1" hint="Vazio = automático" placeholder="Auto" />
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-medium tracking-widest uppercase text-text-muted">ADM %</label>
+            <input type="number" min="0" step="0.1" placeholder="Auto"
+              value={plano==='f'?fIn.admOv:plano==='p'?pIn.admOv:fuIn.admOv}
+              onChange={e=>{const s=e.target.value;plano==='f'?setFIn(p=>({...p,admOv:s})):plano==='p'?setPIn(p=>({...p,admOv:s})):setFuIn(p=>({...p,admOv:s}))}}
+              className="w-full px-3 py-2 rounded-md border border-border bg-[#FAF8F4] text-text-primary text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors" />
+            <p className="text-[10px] text-text-muted">Vazio = automático</p>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-medium tracking-widest uppercase text-text-muted">Lucro %</label>
+            <input type="number" min="0" step="0.1" placeholder="Auto"
+              value={plano==='f'?fIn.lucroOv:plano==='p'?pIn.lucroOv:fuIn.lucroOv}
+              onChange={e=>{const s=e.target.value;plano==='f'?setFIn(p=>({...p,lucroOv:s})):plano==='p'?setPIn(p=>({...p,lucroOv:s})):setFuIn(p=>({...p,lucroOv:s}))}}
+              className="w-full px-3 py-2 rounded-md border border-border bg-[#FAF8F4] text-text-primary text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-colors" />
+            <p className="text-[10px] text-text-muted">Vazio = automático</p>
+          </div>
         </div>
       </div>
 
