@@ -78,9 +78,20 @@ CREATE TABLE IF NOT EXISTS public.custo_km_config (
   manutencao_mensal NUMERIC,
   pneus_mensal NUMERIC,
   pedagio_mensal NUMERIC,
+  -- Campos do novo calculador de custo/km (calculadora-custo-km-tac)
+  custo_km_calculado NUMERIC,          -- custo/km preciso do último cálculo
+  distancia_media NUMERIC,             -- distância média usada no ADM/lucro
+  plano TEXT DEFAULT 'f',              -- plano ativo: 'f' | 'p' | 'fu'
+  params JSONB DEFAULT '{}',           -- inputs brutos do plano (para reload)
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(agregado_id, veiculo_id)
 );
+
+-- Migration: se tabela já existe, adicione as novas colunas:
+-- ALTER TABLE public.custo_km_config ADD COLUMN IF NOT EXISTS custo_km_calculado NUMERIC;
+-- ALTER TABLE public.custo_km_config ADD COLUMN IF NOT EXISTS distancia_media NUMERIC;
+-- ALTER TABLE public.custo_km_config ADD COLUMN IF NOT EXISTS plano TEXT DEFAULT 'f';
+-- ALTER TABLE public.custo_km_config ADD COLUMN IF NOT EXISTS params JSONB DEFAULT '{}';
 
 -- Transações
 CREATE TABLE IF NOT EXISTS public.transacoes (
@@ -242,3 +253,52 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
 
 -- To make the first user an admin, run:
 -- UPDATE public.profiles SET is_admin = TRUE WHERE id = 'YOUR_USER_ID';
+
+-- ── Calculadora: Benchmarks de Veículos ────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.calc_veiculos (
+  id TEXT PRIMARY KEY,
+  tipo TEXT NOT NULL CHECK (tipo IN ('simples', 'cavalo', 'implemento')),
+  cavalo_id TEXT,
+  lbl TEXT NOT NULL,
+  ico TEXT,
+  dim TEXT,
+  km_l NUMERIC,
+  km INTEGER,
+  vc NUMERIC,
+  vr NUMERIC,
+  sal NUMERIC,
+  pc INTEGER,
+  pr INTEGER,
+  aet NUMERIC,
+  vidc INTEGER,
+  rpc NUMERIC,
+  vidr INTEGER,
+  rpr NUMERIC,
+  manut NUMERIC,
+  sort_order INTEGER DEFAULT 0
+);
+
+-- ── Calculadora: Constantes do Sistema ────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.calc_constantes (
+  id INTEGER PRIMARY KEY DEFAULT 1,
+  k JSONB NOT NULL DEFAULT '{}',
+  adm_tbl JSONB NOT NULL DEFAULT '[]',
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  updated_by UUID REFERENCES auth.users(id)
+);
+
+ALTER TABLE public.calc_veiculos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.calc_constantes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "calc_veiculos_read" ON public.calc_veiculos FOR SELECT USING (true);
+CREATE POLICY "calc_veiculos_admin_write" ON public.calc_veiculos FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+);
+CREATE POLICY "calc_constantes_read" ON public.calc_constantes FOR SELECT USING (true);
+CREATE POLICY "calc_constantes_admin_write" ON public.calc_constantes FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+);
+
+-- Migration for existing databases:
+-- CREATE TABLE IF NOT EXISTS public.calc_veiculos (...);
+-- CREATE TABLE IF NOT EXISTS public.calc_constantes (...);

@@ -68,6 +68,11 @@ export interface CustoKmConfig {
   manutencao_mensal: number | null
   pneus_mensal: number | null
   pedagio_mensal: number | null
+  // Campos do calculador de custo/km (calculadora-custo-km-tac)
+  custo_km_calculado: number | null
+  distancia_media: number | null
+  plano: 'f' | 'p' | 'fu' | null
+  params: Record<string, unknown> | null
   updated_at: string
 }
 
