@@ -3,15 +3,44 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import Button from '@/components/ui/Button'
-import { Select, Textarea } from '@/components/ui/Input'
 import Badge from '@/components/ui/Badge'
+import { Select, Textarea } from '@/components/ui/Input'
 import {
   formatCurrency, type Vaga, type Veiculo, type Equipamento, type Motorista, type CustoKmConfig,
   calcEstimativaMensal, calcKmMensal, calcDiasMes, labelFrequencia,
 } from '@/lib/types'
-import { MapPin, Truck, Package, User, AlertCircle, CheckCircle2, TrendingUp, ChevronRight } from 'lucide-react'
+import {
+  MapPin, Truck, Package, User, AlertCircle, CheckCircle2, TrendingUp,
+  ChevronRight, FileText, Clock, Star, DollarSign, Calendar, Info,
+} from 'lucide-react'
 
-/** Fallback para configs legadas (igual ao marketplace). */
+// ── Mapeamento de critérios → rótulos ──────────────────────────────────────────
+const CRIT_HAB: Record<string, string> = {
+  cnh_e:      'CNH Categoria E',
+  mopp:       'MOPP — Produtos Perigosos',
+  aet:        'AET — Carga Indivisível',
+  coletivo:   'Transporte Coletivo de Passageiros',
+  guindaste:  'Operação de Guindaste',
+  nr11:       'NR-11 — Movimentação de Cargas',
+}
+const CRIT_DOC: Record<string, string> = {
+  rntrc:      'RNTRC / ANTT válido',
+  tac:        'TAC — Transportador Autônomo',
+  etc:        'ETC — Empresa de Transporte',
+  laudo:      'Laudo de vistoria veicular',
+  rcfdc:      'Seguro RCFDC (danos à carga)',
+  tacografo:  'Tacógrafo calibrado',
+}
+const CRIT_OP: Record<string, string> = {
+  def_defensiva: 'Direção defensiva atualizada',
+  exp_min:       'Experiência mínima comprovada',
+  rastreador:    'Rastreamento próprio ativo',
+  noturno:       'Disponibilidade para viagens noturnas',
+  pernoite:      'Disponibilidade para pernoite em rota',
+  conta_pj:      'Conta bancária PJ / MEI',
+}
+
+/** Fallback para configs legadas sem custo_km_calculado. */
 function recalcLegado(config: CustoKmConfig): number | null {
   if (!config.km_mes || config.km_mes === 0) return null
   return (
@@ -78,7 +107,6 @@ export default function VagaDetailPage() {
     if (vaga.contrata_equipamento && !selectedEquipamento) {
       setError('Esta vaga requer equipamento. Selecione um equipamento.'); return
     }
-
     setSubmitting(true)
     setError('')
     const supabase = createClient()
@@ -106,7 +134,7 @@ export default function VagaDetailPage() {
   const veiculosFiltrados = vaga.tipo_veiculo ? veiculos.filter(v => v.tipo === vaga.tipo_veiculo) : veiculos
   const equipFiltrados    = vaga.tipo_equipamento ? equipamentos.filter(e => e.tipo === vaga.tipo_equipamento) : equipamentos
 
-  // ── Cálculo financeiro — fiel ao openVagaDetail do dashboard-agregado-v3.html ──
+  // ── Cálculo financeiro ──────────────────────────────────────────────────────
   const custoKm      = custoConfig ? (custoConfig.custo_km_calculado ?? recalcLegado(custoConfig) ?? 0) : 0
   const km           = vaga.km_estimado ?? 0
   const valorKm      = vaga.valor_km ?? 0
@@ -118,25 +146,31 @@ export default function VagaDetailPage() {
   const ganhoMes     = ganhoViagem * freqMult
   const custoMes     = custoViagem * freqMult
   const lucroMes     = lucroViagem * freqMult
-  // cores de margem idênticas ao HTML: ≥25% verde, ≥10% âmbar, <10% vermelho
   const margemVariant: 'success' | 'warning' | 'danger' =
     margemPct >= 25 ? 'success' : margemPct >= 10 ? 'warning' : 'danger'
 
   const temSimulacao = !!(vaga.valor_km && km && custoKm)
   const estimativa   = calcEstimativaMensal(vaga)
 
+  // ── Helpers de exibição ─────────────────────────────────────────────────────
+  const hasCriterios = !!(
+    (vaga.criterios_hab?.length) || (vaga.criterios_doc?.length) || (vaga.criterios_op?.length)
+  )
+  const hasBeneficios = !!(vaga.beneficios?.length)
+  const hasReqAdicionais = !!(vaga.requisitos_adicionais?.length)
+
   return (
-    <div className="px-4 py-5 max-w-2xl mx-auto">
-      <button onClick={() => router.back()} className="text-sm text-text-muted hover:text-text-secondary mb-4 inline-flex items-center gap-1">
+    <div className="px-4 py-5 max-w-2xl mx-auto space-y-4">
+      <button onClick={() => router.back()} className="text-sm text-text-muted hover:text-text-secondary inline-flex items-center gap-1">
         ← Voltar ao marketplace
       </button>
 
-      {/* ── Info da vaga ────────────────────────────────────────── */}
-      <div className="bg-surface border border-border rounded-xl p-5 mb-4 shadow-card">
+      {/* ── Cabeçalho da vaga ──────────────────────────────────────────────── */}
+      <div className="bg-surface border border-border rounded-xl p-5 shadow-card">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
             <p className="font-serif text-xl font-bold text-text-primary">
-              {vaga.rota_origem} → {vaga.rota_destino}
+              {vaga.rota_origem}{vaga.rota_destino ? ` → ${vaga.rota_destino}` : ''}
             </p>
             <p className="text-sm text-text-secondary mt-0.5">
               {(vaga as any).transportadoras?.razao_social ?? 'Transportadora'}
@@ -148,53 +182,41 @@ export default function VagaDetailPage() {
         </div>
 
         <div className="flex flex-wrap gap-2 mb-4">
-          {vaga.tipo_veiculo    && <Badge variant="light"><Truck size={11} className="inline mr-1" />{vaga.tipo_veiculo}</Badge>}
+          {vaga.tipo_veiculo     && <Badge variant="light"><Truck size={11} className="inline mr-1" />{vaga.tipo_veiculo}</Badge>}
           {vaga.tipo_equipamento && <Badge variant="muted"><Package size={11} className="inline mr-1" />{vaga.tipo_equipamento}</Badge>}
+          {vaga.tipo_carga       && <Badge variant="dark">{vaga.tipo_carga}</Badge>}
           {vaga.contrata_equipamento && <Badge variant="info">Inclui equipamento</Badge>}
         </div>
 
-        {/* Grid de dados básicos */}
-        <div className="grid grid-cols-3 gap-3 mb-4">
-          <div className="bg-bg rounded-lg p-3 border border-border">
-            <p className="text-xs text-text-muted mb-0.5">KM da rota</p>
-            <p className="font-semibold text-text-primary text-sm">{km ? `${km.toLocaleString('pt-BR')} km` : '—'}</p>
-          </div>
-          <div className="bg-bg rounded-lg p-3 border border-border">
-            <p className="text-xs text-text-muted mb-0.5">Período</p>
-            <p className="font-semibold text-text-primary text-sm">{vaga.periodo_meses ? `${vaga.periodo_meses} meses` : '—'}</p>
-          </div>
-          <div className="bg-bg rounded-lg p-3 border border-border">
-            <p className="text-xs text-text-muted mb-0.5">Valor/km</p>
-            <p className="font-semibold text-success text-sm">{valorKm ? `${formatCurrency(valorKm)}/km` : '—'}</p>
-          </div>
+        {/* Grid resumo */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <InfoTile label="KM da rota"    value={km ? `${km.toLocaleString('pt-BR')} km` : '—'} />
+          <InfoTile label="Frequência"    value={vaga.frequencia_tipo ? labelFrequencia(vaga).split('·')[0].trim() : '—'} />
+          <InfoTile label="Período"       value={vaga.periodo_meses ? `${vaga.periodo_meses} meses` : 'A combinar'} />
+          <InfoTile label="Vagas abertas" value={vaga.vagas_abertas ? String(vaga.vagas_abertas) : '—'} highlight />
         </div>
 
-        {/* Frequência */}
+        {/* Frequência completa */}
         {vaga.frequencia_tipo && (
-          <p className="text-xs text-text-muted mb-4">
-            🔁 {labelFrequencia(vaga)}
-          </p>
+          <p className="text-xs text-text-muted mb-4">🔁 {labelFrequencia(vaga)}</p>
         )}
 
-        {/* ── Remuneração por km (destaque — fiel ao HTML) */}
+        {/* Remuneração destaque */}
         {vaga.valor_km && (
           <div className="bg-accent rounded-xl p-4 mb-4">
             <p className="text-xs text-bg/70 uppercase tracking-wide mb-1">Remuneração por km</p>
             <p className="font-serif text-3xl font-bold text-bg">{formatCurrency(vaga.valor_km)}</p>
             {ganhoViagem > 0 && (
-              <p className="text-sm text-bg/80 mt-1">Ganho por viagem: {formatCurrency(ganhoViagem)}</p>
+              <p className="text-sm text-bg/80 mt-1">Ganho estimado por viagem: {formatCurrency(ganhoViagem)}</p>
             )}
           </div>
         )}
 
-        {/* ── Simulação financeira — fiel ao openVagaDetail do dashboard-agregado-v3.html ── */}
+        {/* Simulação financeira */}
         {temSimulacao ? (
           <div className="mb-4">
-            <p className="text-xs text-text-muted uppercase tracking-wide mb-2">
-              📊 Simulação financeira — baseada no seu custo/km
-            </p>
+            <p className="text-xs text-text-muted uppercase tracking-wide mb-2">📊 Simulação financeira — seu custo/km</p>
             <div className="bg-surface border border-border rounded-xl overflow-hidden">
-              {/* Linha 1: receita/viagem + custo/viagem */}
               <div className="grid grid-cols-2 border-b border-border">
                 <div className="p-3 border-r border-border">
                   <p className="text-xs text-text-muted uppercase tracking-wide mb-1">Receita/viagem</p>
@@ -205,7 +227,6 @@ export default function VagaDetailPage() {
                   <p className="font-serif text-xl text-danger">{formatCurrency(custoViagem)}</p>
                 </div>
               </div>
-              {/* Linha 2: lucro/viagem + margem */}
               <div className="grid grid-cols-2 border-b border-border">
                 <div className="p-3 border-r border-border">
                   <p className="text-xs text-text-muted uppercase tracking-wide mb-1">Lucro/viagem est.</p>
@@ -220,13 +241,12 @@ export default function VagaDetailPage() {
                   </p>
                 </div>
               </div>
-              {/* Linha 3: ganho/mês + lucro/mês (fundo verde) */}
               {freqMult > 0 && (
                 <div className="bg-success-light p-3">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs text-text-muted uppercase tracking-wide mb-1">
-                        Ganho/mês estimado <span className="normal-case">({labelFrequencia(vaga)})</span>
+                        Ganho/mês est. <span className="normal-case">({labelFrequencia(vaga)})</span>
                       </p>
                       <p className="font-serif text-2xl font-semibold text-success">{formatCurrency(ganhoMes)}</p>
                     </div>
@@ -239,17 +259,15 @@ export default function VagaDetailPage() {
                   </div>
                 </div>
               )}
-              {/* Rodapé: referência ao custo/km */}
               <div className="px-3 py-2 bg-bg border-t border-border">
                 <p className="text-xs text-text-muted">
                   💡 Baseado no seu custo/km atual de <strong>{formatCurrency(custoKm)}</strong>.{' '}
-                  <a href="/agregado/custo-km" className="underline">Calculadora de custos →</a>
+                  <a href="/agregado/custo-km" className="underline">Calculadora →</a>
                 </p>
               </div>
             </div>
           </div>
         ) : vaga.valor_km && !custoConfig ? (
-          /* Sem custo/km configurado — mostra estimativa bruta e convite */
           <div className="mb-4">
             <div className="bg-success-light border border-success/20 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -267,26 +285,164 @@ export default function VagaDetailPage() {
               )}
             </div>
             <a href="/agregado/custo-km" className="mt-2 flex items-center gap-1.5 text-xs text-accent">
-              Configure seu custo/km para ver a simulação financeira completa <ChevronRight size={12} />
+              Configure seu custo/km para ver a simulação completa <ChevronRight size={12} />
             </a>
           </div>
         ) : estimativa ? (
-          /* Fallback valor_contrato legado */
           <div className="bg-success-light border border-success/20 rounded-xl p-4 mb-4">
-            <p className="text-xs text-success uppercase tracking-wide mb-1">Valor mensal</p>
+            <p className="text-xs text-success uppercase tracking-wide mb-1">Estimativa mensal</p>
             <p className="font-bold text-success text-3xl">{formatCurrency(estimativa)}<span className="text-sm font-normal text-text-secondary">/mês</span></p>
           </div>
         ) : null}
 
+        {/* Descrição completa */}
         {vaga.descricao && (
-          <div>
-            <p className="text-xs text-text-muted mb-1 uppercase tracking-wide">Descrição / Peculiaridades</p>
-            <p className="text-sm text-text-secondary">{vaga.descricao}</p>
+          <div className="pt-3 border-t border-border">
+            <p className="text-xs text-text-muted uppercase tracking-wide mb-1.5">Descrição / Peculiaridades</p>
+            <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">{vaga.descricao}</p>
           </div>
         )}
       </div>
 
-      {/* ── Formulário de candidatura ───────────────────────────── */}
+      {/* ── Detalhes operacionais ──────────────────────────────────────────── */}
+      <div className="bg-surface border border-border rounded-xl p-5 space-y-4">
+        <h2 className="font-semibold text-text-primary text-sm uppercase tracking-wide flex items-center gap-2">
+          <Info size={15} className="text-text-muted" />
+          Detalhes da operação
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {vaga.tipo_carga && (
+            <div className="bg-bg border border-border rounded-lg p-3">
+              <p className="text-xs text-text-muted mb-0.5 flex items-center gap-1"><Package size={10} />Tipo de carga</p>
+              <p className="text-sm font-medium text-text-primary">{vaga.tipo_carga}</p>
+            </div>
+          )}
+          {vaga.inicio_previsto && (
+            <div className="bg-bg border border-border rounded-lg p-3">
+              <p className="text-xs text-text-muted mb-0.5 flex items-center gap-1"><Calendar size={10} />Início</p>
+              <p className="text-sm font-medium text-text-primary">{vaga.inicio_previsto}</p>
+            </div>
+          )}
+          {vaga.ano_maximo_veiculo && (
+            <div className="bg-bg border border-border rounded-lg p-3">
+              <p className="text-xs text-text-muted mb-0.5 flex items-center gap-1"><Truck size={10} />Ano mínimo</p>
+              <p className="text-sm font-medium text-text-primary">A partir de {vaga.ano_maximo_veiculo}</p>
+            </div>
+          )}
+          {vaga.jornada && (
+            <div className="bg-bg border border-border rounded-lg p-3">
+              <p className="text-xs text-text-muted mb-0.5 flex items-center gap-1"><Clock size={10} />Jornada</p>
+              <p className="text-sm font-medium text-text-primary">{vaga.jornada}</p>
+            </div>
+          )}
+          {vaga.forma_pagamento && (
+            <div className="bg-bg border border-border rounded-lg p-3">
+              <p className="text-xs text-text-muted mb-0.5 flex items-center gap-1"><DollarSign size={10} />Pagamento</p>
+              <p className="text-sm font-medium text-text-primary">{vaga.forma_pagamento}</p>
+            </div>
+          )}
+          {vaga.adiantamento != null && (
+            <div className="bg-bg border border-border rounded-lg p-3">
+              <p className="text-xs text-text-muted mb-0.5 flex items-center gap-1"><DollarSign size={10} />Adiantamento</p>
+              <p className="text-sm font-medium text-success">{vaga.adiantamento}%</p>
+            </div>
+          )}
+        </div>
+
+        {/* Observações do equipamento */}
+        {vaga.equip_obs && (
+          <div className="bg-info-light border border-info/20 rounded-lg p-3">
+            <p className="text-xs font-medium text-info mb-1">Observação sobre o equipamento</p>
+            <p className="text-sm text-text-secondary">{vaga.equip_obs}</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Benefícios ─────────────────────────────────────────────────────── */}
+      {hasBeneficios && (
+        <div className="bg-surface border border-border rounded-xl p-5">
+          <h2 className="font-semibold text-text-primary text-sm uppercase tracking-wide flex items-center gap-2 mb-3">
+            <Star size={15} className="text-text-muted" />
+            Benefícios oferecidos
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {vaga.beneficios!.map(b => (
+              <span key={b} className="flex items-center gap-1.5 bg-success-light border border-success/20 text-success text-xs font-medium px-3 py-1.5 rounded-pill">
+                <CheckCircle2 size={11} />
+                {b}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Requisitos exigidos ─────────────────────────────────────────────── */}
+      {hasCriterios && (
+        <div className="bg-surface border border-border rounded-xl p-5 space-y-4">
+          <h2 className="font-semibold text-text-primary text-sm uppercase tracking-wide flex items-center gap-2">
+            <FileText size={15} className="text-text-muted" />
+            Requisitos exigidos
+          </h2>
+
+          {vaga.criterios_hab && vaga.criterios_hab.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-text-muted uppercase tracking-wide mb-2">Habilitações e certificações</p>
+              <ul className="space-y-1.5">
+                {vaga.criterios_hab.map(k => (
+                  <li key={k} className="flex items-center gap-2 text-sm text-text-secondary">
+                    <CheckCircle2 size={13} className="text-accent flex-shrink-0" />
+                    {CRIT_HAB[k] ?? k}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {vaga.criterios_doc && vaga.criterios_doc.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-text-muted uppercase tracking-wide mb-2">Documentação veicular</p>
+              <ul className="space-y-1.5">
+                {vaga.criterios_doc.map(k => (
+                  <li key={k} className="flex items-center gap-2 text-sm text-text-secondary">
+                    <CheckCircle2 size={13} className="text-accent flex-shrink-0" />
+                    {CRIT_DOC[k] ?? k}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {vaga.criterios_op && vaga.criterios_op.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-text-muted uppercase tracking-wide mb-2">Exigências operacionais</p>
+              <ul className="space-y-1.5">
+                {vaga.criterios_op.map(k => (
+                  <li key={k} className="flex items-center gap-2 text-sm text-text-secondary">
+                    <CheckCircle2 size={13} className="text-accent flex-shrink-0" />
+                    {CRIT_OP[k] ?? k}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {hasReqAdicionais && (
+            <div>
+              <p className="text-xs font-medium text-text-muted uppercase tracking-wide mb-2">Requisitos adicionais</p>
+              <ul className="space-y-1.5">
+                {vaga.requisitos_adicionais!.map((r, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
+                    <span className="text-text-muted mt-0.5 flex-shrink-0">→</span>
+                    {r}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Formulário de candidatura ──────────────────────────────────────── */}
       {jaCandidata || submitted ? (
         <div className="bg-success-light border border-success/20 rounded-xl p-5 text-center">
           <CheckCircle2 size={32} className="text-success mx-auto mb-3" />
@@ -313,12 +469,12 @@ export default function VagaDetailPage() {
               {/* Veículo */}
               <div>
                 <label className="text-sm font-medium text-text-secondary mb-1 block">
-                  <Truck size={14} className="inline mr-1" />
-                  Veículo para este contrato *
+                  <Truck size={14} className="inline mr-1" />Veículo para este contrato *
                 </label>
                 {veiculosFiltrados.length === 0 ? (
                   <div className="bg-danger-light border border-danger/20 rounded-lg p-3 text-sm text-danger">
-                    Você não possui {vaga.tipo_veiculo} cadastrado. <a href="/agregado/cadastros" className="underline">Cadastrar</a>
+                    Você não possui {vaga.tipo_veiculo} cadastrado.{' '}
+                    <a href="/agregado/cadastros" className="underline">Cadastrar</a>
                   </div>
                 ) : (
                   <select value={selectedVeiculo} onChange={e => setSelectedVeiculo(e.target.value)}
@@ -338,12 +494,12 @@ export default function VagaDetailPage() {
               {vaga.contrata_equipamento && (
                 <div>
                   <label className="text-sm font-medium text-text-secondary mb-1 block">
-                    <Package size={14} className="inline mr-1" />
-                    Equipamento *
+                    <Package size={14} className="inline mr-1" />Equipamento *
                   </label>
                   {equipFiltrados.length === 0 ? (
                     <div className="bg-danger-light border border-danger/20 rounded-lg p-3 text-sm text-danger">
-                      Nenhum equipamento compatível cadastrado. <a href="/agregado/cadastros" className="underline">Cadastrar</a>
+                      Nenhum equipamento compatível cadastrado.{' '}
+                      <a href="/agregado/cadastros" className="underline">Cadastrar</a>
                     </div>
                   ) : (
                     <select value={selectedEquipamento} onChange={e => setSelectedEquipamento(e.target.value)}
@@ -360,12 +516,12 @@ export default function VagaDetailPage() {
               {/* Motorista */}
               <div>
                 <label className="text-sm font-medium text-text-secondary mb-1 block">
-                  <User size={14} className="inline mr-1" />
-                  Motorista *
+                  <User size={14} className="inline mr-1" />Motorista *
                 </label>
                 {motoristas.length === 0 ? (
                   <div className="bg-warning-light border border-warning/20 rounded-lg p-3 text-sm text-warning">
-                    Nenhum motorista cadastrado. <a href="/agregado/cadastros" className="underline text-accent">Cadastrar</a>
+                    Nenhum motorista cadastrado.{' '}
+                    <a href="/agregado/cadastros" className="underline text-accent">Cadastrar</a>
                   </div>
                 ) : (
                   <select value={selectedMotorista} onChange={e => setSelectedMotorista(e.target.value)}
@@ -378,10 +534,13 @@ export default function VagaDetailPage() {
                 )}
               </div>
 
-              <Textarea label="Mensagem para a transportadora (opcional)" value={mensagem}
+              <Textarea
+                label="Mensagem para a transportadora (opcional)"
+                value={mensagem}
                 onChange={e => setMensagem(e.target.value)}
                 placeholder="Apresente-se, destaque sua experiência na rota ou mencione algo relevante..."
-                rows={3} />
+                rows={3}
+              />
 
               {error && (
                 <div className="bg-danger-light border border-danger/20 text-danger text-sm rounded-md px-3 py-2">{error}</div>
@@ -397,6 +556,16 @@ export default function VagaDetailPage() {
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+// ── InfoTile — bloco de dado simples ─────────────────────────────────────────
+function InfoTile({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="bg-bg rounded-lg p-3 border border-border">
+      <p className="text-xs text-text-muted mb-0.5">{label}</p>
+      <p className={`font-semibold text-sm ${highlight ? 'text-success' : 'text-text-primary'}`}>{value}</p>
     </div>
   )
 }

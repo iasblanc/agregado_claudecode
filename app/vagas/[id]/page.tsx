@@ -280,7 +280,11 @@ export default async function PublicVagaDetailPage({ params }: PageProps) {
       </main>
 
       {/* Footer */}
-      <footer className="bg-[#1A1915] text-bg/60 py-6 px-4 text-center text-sm mt-8">
+      <footer className="bg-[#1A1915] text-bg/60 py-8 px-4 text-center text-sm mt-8">
+        <Link href="/" className="inline-flex items-center gap-2 mb-3">
+          <img src="/logo.svg" alt="Agregado.Pro" className="h-7 w-auto opacity-80" />
+          <span className="font-serif font-semibold text-bg/80">Agregado.Pro</span>
+        </Link>
         <p>© {new Date().getFullYear()} Agregado.Pro · <Link href="/" className="hover:text-bg transition-colors">Página inicial</Link></p>
       </footer>
     </div>
