@@ -122,23 +122,53 @@ CREATE TABLE IF NOT EXISTS public.vagas (
   titulo TEXT,
   rota_origem TEXT,
   rota_destino TEXT,
+  uf_origem TEXT,
+  uf_destino TEXT,
   km_estimado NUMERIC,                              -- distância por viagem (km)
   tipo_veiculo TEXT,
   tipo_equipamento TEXT,
+  equip_obs TEXT,                                   -- observações sobre o equipamento
+  tipo_carga TEXT,
+  vagas_abertas INTEGER DEFAULT 1,
+  inicio_previsto TEXT,
+  ano_maximo_veiculo INTEGER,
   -- Precificação por km (fórmula de estimativa mensal)
   -- Fiel aos HTMLs de referência (dashboard-transportadora-v8.html / dashboard-agregado-v3.html)
   valor_km NUMERIC,                                 -- R$/km pago pela transportadora
   frequencia_tipo TEXT CHECK (frequencia_tipo IN ('diaria', '2x_semana', '3x_semana', 'semanal', 'quinzenal', 'sob_demanda')),
   -- Multiplicadores: diaria=20, 3x_semana=12, 2x_semana=8, semanal=4, quinzenal=2, sob_demanda=null
   valor_contrato NUMERIC,                           -- estimativa mensal = valor_km × km_estimado × freq_mult
+  forma_pagamento TEXT,
+  adiantamento INTEGER,                             -- percentual de adiantamento
   periodo_meses INTEGER,
+  jornada TEXT,
   descricao TEXT,
   contrata_equipamento BOOLEAN DEFAULT FALSE,
+  criterios_hab TEXT[],                             -- habilitações exigidas
+  criterios_doc TEXT[],                             -- documentação exigida
+  criterios_op TEXT[],                              -- exigências operacionais
+  requisitos_adicionais TEXT[],                     -- requisitos livres adicionais
+  beneficios TEXT[],                                -- benefícios oferecidos
   status TEXT DEFAULT 'ativa' CHECK (status IN ('ativa', 'encerrada', 'preenchida')),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Migration: se a tabela já existe, adicione as novas colunas:
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS uf_origem TEXT;
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS uf_destino TEXT;
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS equip_obs TEXT;
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS tipo_carga TEXT;
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS vagas_abertas INTEGER DEFAULT 1;
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS inicio_previsto TEXT;
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS ano_maximo_veiculo INTEGER;
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS forma_pagamento TEXT;
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS adiantamento INTEGER;
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS jornada TEXT;
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS criterios_hab TEXT[];
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS criterios_doc TEXT[];
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS criterios_op TEXT[];
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS requisitos_adicionais TEXT[];
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS beneficios TEXT[];
 -- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS valor_km NUMERIC;
 -- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS frequencia_tipo TEXT CHECK (frequencia_tipo IN ('diaria', '2x_semana', '3x_semana', 'semanal', 'quinzenal', 'sob_demanda'));
 -- Se tinha sentido ou dias_semana de versão anterior, remova:
@@ -153,10 +183,31 @@ CREATE TABLE IF NOT EXISTS public.candidaturas (
   veiculo_id UUID REFERENCES public.veiculos(id) ON DELETE SET NULL,
   equipamento_id UUID REFERENCES public.equipamentos(id) ON DELETE SET NULL,
   motorista_id UUID REFERENCES public.motoristas(id) ON DELETE SET NULL,
-  status TEXT DEFAULT 'pendente' CHECK (status IN ('pendente', 'aceito', 'recusado')),
+  status TEXT DEFAULT 'pendente' CHECK (status IN ('pendente', 'visualizado', 'em_negociacao', 'em_formalizacao', 'aceito', 'contratado', 'recusado')),
   mensagem TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(vaga_id, agregado_id)
+);
+-- Migration: atualizar constraint de status das candidaturas:
+-- ALTER TABLE public.candidaturas DROP CONSTRAINT IF EXISTS candidaturas_status_check;
+-- ALTER TABLE public.candidaturas ADD CONSTRAINT candidaturas_status_check
+--   CHECK (status IN ('pendente', 'visualizado', 'em_negociacao', 'em_formalizacao', 'aceito', 'contratado', 'recusado'));
+
+-- Contratos Motorista (gerados após formalização de candidatura aprovada)
+CREATE TABLE IF NOT EXISTS public.contratos_motorista (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  candidatura_id UUID REFERENCES public.candidaturas(id) ON DELETE CASCADE,
+  transportadora_id UUID REFERENCES public.transportadoras(id) ON DELETE CASCADE,
+  agregado_id UUID REFERENCES public.agregados(id) ON DELETE CASCADE,
+  vaga_id UUID REFERENCES public.vagas(id) ON DELETE CASCADE,
+  status TEXT DEFAULT 'ativo' CHECK (status IN ('ativo', 'suspenso', 'encerrado')),
+  data_inicio DATE,
+  data_fim_prevista DATE,
+  observacoes TEXT,
+  mensagens JSONB DEFAULT '[]',
+  timeline JSONB DEFAULT '[]',
+  ocorrencias JSONB DEFAULT '[]',
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Avaliações
@@ -186,6 +237,7 @@ ALTER TABLE public.contratos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vagas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.candidaturas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.avaliacoes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contratos_motorista ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: users see/edit their own
 CREATE POLICY "profiles_own" ON public.profiles FOR ALL USING (auth.uid() = id);
@@ -233,6 +285,12 @@ CREATE POLICY "candidaturas_transportadora_update" ON public.candidaturas FOR UP
   USING (EXISTS (
     SELECT 1 FROM public.vagas WHERE id = candidaturas.vaga_id AND transportadora_id = auth.uid()
   ));
+
+-- Contratos Motorista
+CREATE POLICY "contratos_motorista_transportadora" ON public.contratos_motorista FOR ALL
+  USING (auth.uid() = transportadora_id);
+CREATE POLICY "contratos_motorista_agregado" ON public.contratos_motorista FOR SELECT
+  USING (auth.uid() = agregado_id);
 
 -- Avaliações
 CREATE POLICY "avaliacoes_read" ON public.avaliacoes FOR SELECT USING (auth.uid() IN (avaliador_id, avaliado_id));
