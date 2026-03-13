@@ -10,8 +10,9 @@ import { formatCurrency, type Vaga, type Candidatura } from '@/lib/types'
 import {
   ArrowLeft, MapPin, Truck, Package, Clock, DollarSign,
   Users, User, MessageSquare, CheckCircle2, XCircle,
-  Loader2, AlertCircle, CalendarDays
+  Loader2, AlertCircle, CalendarDays, TrendingUp, RefreshCw,
 } from 'lucide-react'
+import { calcEstimativaMensal, calcKmViagem, calcDiasMes, calcKmMensal, labelFrequencia, labelSentido, formatCurrency as fc } from '@/lib/types'
 
 interface Profile {
   nome: string | null
@@ -258,7 +259,7 @@ export default function VagaDetailPage() {
                   {vaga.rota_origem}{vaga.rota_origem && vaga.rota_destino ? ' → ' : ''}{vaga.rota_destino}
                 </p>
                 {vaga.km_estimado && (
-                  <p className="text-xs text-text-muted">{vaga.km_estimado.toLocaleString('pt-BR')} km estimados</p>
+                  <p className="text-xs text-text-muted">{vaga.km_estimado.toLocaleString('pt-BR')} km ({labelSentido(vaga)})</p>
                 )}
               </div>
             </div>
@@ -281,12 +282,21 @@ export default function VagaDetailPage() {
               </div>
             </div>
           )}
-          {vaga.valor_contrato && (
+          {(vaga as any).valor_km && (
             <div className="flex items-start gap-2">
               <DollarSign size={15} className="text-text-muted mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-xs text-text-muted uppercase tracking-wide">Valor do contrato</p>
-                <p className="text-sm font-semibold text-success">{formatCurrency(vaga.valor_contrato)}/mês</p>
+                <p className="text-xs text-text-muted uppercase tracking-wide">Valor por km</p>
+                <p className="text-sm font-semibold text-text-primary">{fc((vaga as any).valor_km)}/km</p>
+              </div>
+            </div>
+          )}
+          {(vaga as any).frequencia_tipo && (
+            <div className="flex items-start gap-2">
+              <RefreshCw size={15} className="text-text-muted mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-text-muted uppercase tracking-wide">Frequência</p>
+                <p className="text-sm text-text-primary">{labelFrequencia(vaga as any)}</p>
               </div>
             </div>
           )}
@@ -300,6 +310,29 @@ export default function VagaDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Estimativa mensal — resumo para a transportadora */}
+        {(() => {
+          const est  = calcEstimativaMensal(vaga as any)
+          const kmV  = calcKmViagem(vaga as any)
+          const dias = calcDiasMes(vaga as any)
+          const kmM  = calcKmMensal(vaga as any)
+          if (!est) return null
+          return (
+            <div className="mt-4 bg-success-light border border-success/20 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp size={14} className="text-success" />
+                <p className="text-xs font-semibold text-success uppercase tracking-wide">Estimativa mensal ao agregado</p>
+              </div>
+              <p className="font-bold text-success text-2xl mb-2">{fc(est)}<span className="text-sm font-normal text-text-secondary">/mês</span></p>
+              {kmV && dias && kmM && (vaga as any).valor_km && (
+                <p className="text-xs text-text-muted">
+                  {fc((vaga as any).valor_km)}/km × {kmV.toLocaleString('pt-BR')} km × {dias} dias = {fc(est)}/mês · {kmM.toLocaleString('pt-BR')} km/mês
+                </p>
+              )}
+            </div>
+          )
+        })()}
         {vaga.descricao && (
           <div className="mt-4 pt-4 border-t border-border">
             <p className="text-xs text-text-muted uppercase tracking-wide mb-1.5">Descrição</p>

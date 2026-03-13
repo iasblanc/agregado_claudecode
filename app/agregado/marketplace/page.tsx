@@ -4,29 +4,58 @@ import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
 import Badge from '@/components/ui/Badge'
 import { Select } from '@/components/ui/Input'
-import { formatCurrency, TIPOS_VEICULO, TIPOS_EQUIPAMENTO, type Vaga, type CustoKmConfig } from '@/lib/types'
+import {
+  formatCurrency, TIPOS_VEICULO, TIPOS_EQUIPAMENTO,
+  type Vaga, type CustoKmConfig,
+  calcEstimativaMensal, calcKmMensal, calcKmViagem, calcDiasMes, labelFrequencia,
+} from '@/lib/types'
 import { MapPin, ChevronRight, Store, AlertCircle } from 'lucide-react'
 
 interface VagaWithTransportadora extends Vaga {
   transportadoras: { razao_social: string | null; logo_url: string | null } | null
 }
 
+/** Fallback para configs legadas sem custo_km_calculado. */
 function recalcLegado(config: CustoKmConfig): number | null {
   if (!config.km_mes || config.km_mes === 0) return null
-  return ((config.parcela_caminhao ?? 0) + (config.seguro ?? 0) + (config.licenciamento ?? 0) + (config.rastreador ?? 0) + (config.outros_fixos ?? 0)) / config.km_mes
+  return (
+    ((config.parcela_caminhao ?? 0) + (config.seguro ?? 0) + (config.licenciamento ?? 0) +
+     (config.rastreador ?? 0) + (config.outros_fixos ?? 0)) / config.km_mes
     + (config.preco_diesel && config.consumo_km_litro ? config.preco_diesel / config.consumo_km_litro : 0)
-    + ((config.manutencao_mensal ?? 0) + (config.pneus_mensal ?? 0) + (config.pedagio_mensal ?? 0) + (config.salario_motorista ?? 0)) / config.km_mes
+    + ((config.manutencao_mensal ?? 0) + (config.pneus_mensal ?? 0) +
+       (config.pedagio_mensal ?? 0) + (config.salario_motorista ?? 0)) / config.km_mes
+  )
 }
 
-function getAnalise(vaga: Vaga, config: CustoKmConfig | null): { label: string; variant: 'success' | 'warning' | 'danger' | 'muted' } {
+/**
+ * Analisa viabilidade financeira da vaga para este agregado.
+ *
+ * Fórmula:
+ *   ratio = estimativa_mensal / (custo_km_total × km_mensal)
+ *
+ * Onde:
+ *   estimativa_mensal = valor_km × km_viagem × dias_mes
+ *   km_mensal         = km_viagem × dias_mes
+ *   km_viagem         = km_estimado × (ida_volta ? 2 : 1)
+ */
+function getAnalise(
+  vaga: Vaga,
+  config: CustoKmConfig | null,
+): { label: string; variant: 'success' | 'warning' | 'danger' | 'muted' } {
   if (!config) return { label: 'Configure seu custo/km', variant: 'muted' }
+
   const custoKmTotal = config.custo_km_calculado ?? recalcLegado(config)
   if (!custoKmTotal) return { label: 'Configure seu custo/km', variant: 'muted' }
-  if (!vaga.valor_contrato || !vaga.km_estimado) return { label: 'Sem dados suficientes', variant: 'muted' }
-  const ratio = vaga.valor_contrato / (custoKmTotal * vaga.km_estimado)
+
+  const estimativa = calcEstimativaMensal(vaga)
+  const kmMes = calcKmMensal(vaga)
+
+  if (!estimativa || !kmMes) return { label: 'Sem dados suficientes', variant: 'muted' }
+
+  const ratio = estimativa / (custoKmTotal * kmMes)
   if (ratio >= 1.15) return { label: 'Contrato saudável', variant: 'success' }
-  if (ratio >= 1.0) return { label: 'No limite', variant: 'warning' }
-  return { label: 'Abaixo do custo', variant: 'danger' }
+  if (ratio >= 1.0)  return { label: 'No limite',         variant: 'warning' }
+  return                     { label: 'Abaixo do custo',  variant: 'danger'  }
 }
 
 export default function MarketplaceAgregadoPage() {
@@ -96,7 +125,11 @@ export default function MarketplaceAgregadoPage() {
       ) : (
         <div className="space-y-3">
           {filtradas.map(vaga => {
-            const analise = getAnalise(vaga, custoConfig)
+            const analise    = getAnalise(vaga, custoConfig)
+            const estimativa = calcEstimativaMensal(vaga)
+            const kmViagem   = calcKmViagem(vaga)
+            const diasMes    = calcDiasMes(vaga)
+
             return (
               <div key={vaga.id} className="bg-surface border border-border rounded-xl p-4 shadow-card">
                 <div className="flex items-start justify-between gap-3 mb-3">
@@ -124,13 +157,34 @@ export default function MarketplaceAgregadoPage() {
                   <p className="text-xs text-text-secondary mb-3 line-clamp-2">{vaga.descricao}</p>
                 )}
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-text-muted">Valor do contrato</p>
-                    <p className="font-bold text-text-primary text-lg">
-                      {vaga.valor_contrato ? formatCurrency(vaga.valor_contrato) : '—'}<span className="text-xs font-normal text-text-muted">/mês</span>
-                    </p>
+                {/* Estimativa mensal com breakdown */}
+                <div className="bg-bg rounded-lg p-3 mb-3 border border-border">
+                  <div className="flex items-end justify-between gap-2">
+                    <div>
+                      <p className="text-xs text-text-muted mb-0.5">Estimativa mensal</p>
+                      <p className="font-bold text-text-primary text-lg leading-none">
+                        {estimativa ? formatCurrency(estimativa) : '—'}
+                        <span className="text-xs font-normal text-text-muted">/mês</span>
+                      </p>
+                    </div>
+                    {/* Mini breakdown quando há dados de precificação */}
+                    {vaga.valor_km && kmViagem && diasMes && (
+                      <p className="text-xs text-text-muted text-right leading-relaxed">
+                        {formatCurrency(vaga.valor_km)}/km<br />
+                        × {kmViagem.toLocaleString('pt-BR')} km × {diasMes} dias
+                      </p>
+                    )}
                   </div>
+                  {/* Frequência */}
+                  {vaga.frequencia_tipo && (
+                    <p className="text-xs text-text-muted mt-1.5 border-t border-border pt-1.5">
+                      Frequência: {labelFrequencia(vaga)}
+                      {vaga.sentido === 'ida_volta' ? ' · Ida e volta' : ' · Somente ida'}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-end">
                   <Link href={`/agregado/marketplace/${vaga.id}`}>
                     <button className="flex items-center gap-1.5 bg-accent text-bg px-4 py-2 rounded-pill text-sm font-medium hover:bg-[#1A1915] transition-colors">
                       Ver contrato <ChevronRight size={14} />
