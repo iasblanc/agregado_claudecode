@@ -178,10 +178,10 @@ export default function AvaliacoesPage() {
       {/* Sub-tabs */}
       <div className="flex overflow-x-auto border-b border-border gap-0">
         {([
-          { key: 'encerrados', label: 'Avaliar contratos encerrados', count: encerrados.length - enviados.size },
-          { key: 'recebidas', label: 'Avaliações recebidas' },
-          { key: 'feitas', label: 'Minhas avaliações' },
-        ] as const).map(t => (
+          { key: 'encerrados' as const, label: 'Avaliar contratos encerrados', count: encerrados.length - enviados.size },
+          { key: 'recebidas' as const, label: 'Avaliações recebidas', count: 0 },
+          { key: 'feitas' as const, label: 'Minhas avaliações', count: 0 },
+        ]).map(t => (
           <button
             key={t.key}
             onClick={() => setSubTab(t.key)}
@@ -192,7 +192,7 @@ export default function AvaliacoesPage() {
             }`}
           >
             {t.label}
-            {t.count !== undefined && t.count > 0 && (
+            {t.count > 0 && (
               <span className="bg-warning-light text-warning text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                 {t.count}
               </span>
