@@ -280,7 +280,8 @@ export default function NovaVagaPage() {
       if (error) throw error
       setSuccess(true)
     } catch (err: unknown) {
-      setSubmitError(err instanceof Error ? err.message : 'Erro ao publicar vaga. Tente novamente.')
+      const msg = (err as { message?: string })?.message
+      setSubmitError(msg ?? 'Erro ao publicar vaga. Tente novamente.')
     } finally {
       setLoading(false)
     }
