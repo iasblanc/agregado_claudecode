@@ -10,7 +10,7 @@
 
 DO $$
 DECLARE
-  trans_id UUID := 'SEU-UUID-AQUI';  -- << SUBSTITUA AQUI
+  trans_id UUID := 'd27bd4a3-1baf-41b4-b8ec-c5234d945d48';
   vaga1 UUID := gen_random_uuid();
   vaga2 UUID := gen_random_uuid();
   vaga3 UUID := gen_random_uuid();
