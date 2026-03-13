@@ -126,11 +126,11 @@ CREATE TABLE IF NOT EXISTS public.vagas (
   tipo_veiculo TEXT,
   tipo_equipamento TEXT,
   -- Precificação por km (fórmula de estimativa mensal)
+  -- Fiel aos HTMLs de referência (dashboard-transportadora-v8.html / dashboard-agregado-v3.html)
   valor_km NUMERIC,                                 -- R$/km pago pela transportadora
-  frequencia_tipo TEXT CHECK (frequencia_tipo IN ('diaria', 'semanal', 'quinzenal', 'mensal')),
-  dias_semana INTEGER CHECK (dias_semana BETWEEN 1 AND 7), -- dias úteis/sem (frequência diária)
-  sentido TEXT DEFAULT 'ida' CHECK (sentido IN ('ida', 'ida_volta')), -- somente ida ou ida+volta
-  valor_contrato NUMERIC,                           -- estimativa mensal = valor_km × km_viagem × dias_mes
+  frequencia_tipo TEXT CHECK (frequencia_tipo IN ('diaria', '2x_semana', '3x_semana', 'semanal', 'quinzenal', 'sob_demanda')),
+  -- Multiplicadores: diaria=20, 3x_semana=12, 2x_semana=8, semanal=4, quinzenal=2, sob_demanda=null
+  valor_contrato NUMERIC,                           -- estimativa mensal = valor_km × km_estimado × freq_mult
   periodo_meses INTEGER,
   descricao TEXT,
   contrata_equipamento BOOLEAN DEFAULT FALSE,
@@ -140,9 +140,10 @@ CREATE TABLE IF NOT EXISTS public.vagas (
 
 -- Migration: se a tabela já existe, adicione as novas colunas:
 -- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS valor_km NUMERIC;
--- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS frequencia_tipo TEXT CHECK (frequencia_tipo IN ('diaria', 'semanal', 'quinzenal', 'mensal'));
--- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS dias_semana INTEGER CHECK (dias_semana BETWEEN 1 AND 7);
--- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS sentido TEXT DEFAULT 'ida' CHECK (sentido IN ('ida', 'ida_volta'));
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS frequencia_tipo TEXT CHECK (frequencia_tipo IN ('diaria', '2x_semana', '3x_semana', 'semanal', 'quinzenal', 'sob_demanda'));
+-- Se tinha sentido ou dias_semana de versão anterior, remova:
+-- ALTER TABLE public.vagas DROP COLUMN IF EXISTS sentido;
+-- ALTER TABLE public.vagas DROP COLUMN IF EXISTS dias_semana;
 
 -- Candidaturas
 CREATE TABLE IF NOT EXISTS public.candidaturas (

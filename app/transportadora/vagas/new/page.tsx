@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { Input, Select, Textarea } from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
-import { TIPOS_VEICULO, TIPOS_EQUIPAMENTO, formatCurrency, calcKmViagem, calcDiasMes } from '@/lib/types'
+import { TIPOS_VEICULO, TIPOS_EQUIPAMENTO, formatCurrency, FREQ_MULT } from '@/lib/types'
 import { ArrowLeft, MapPin, Truck, Package, DollarSign, Clock, FileText, AlertCircle, TrendingUp } from 'lucide-react'
 
 interface FormData {
@@ -16,11 +16,9 @@ interface FormData {
   tipo_veiculo: string
   contrata_equipamento: boolean
   tipo_equipamento: string
-  // precificação por km
+  // precificação
   valor_km: string
   frequencia_tipo: string
-  dias_semana: string
-  sentido: string
   // contrato
   periodo_meses: string
   descricao: string
@@ -35,9 +33,18 @@ interface FormErrors {
   tipo_equipamento?: string
   valor_km?: string
   frequencia_tipo?: string
-  dias_semana?: string
   periodo_meses?: string
 }
+
+// Opções de frequência idênticas ao dashboard-transportadora-v8.html linha 1272
+const FREQ_OPTIONS = [
+  { value: 'diaria',     label: 'Diária',           mult: 20 },
+  { value: '3x_semana',  label: '3x por semana',    mult: 12 },
+  { value: '2x_semana',  label: '2x por semana',    mult: 8  },
+  { value: 'semanal',    label: 'Semanal',           mult: 4  },
+  { value: 'quinzenal',  label: 'Quinzenal',         mult: 2  },
+  { value: 'sob_demanda',label: 'Sob demanda',       mult: 0  },
+] as const
 
 export default function NovaVagaPage() {
   const router = useRouter()
@@ -54,8 +61,6 @@ export default function NovaVagaPage() {
     tipo_equipamento: '',
     valor_km: '',
     frequencia_tipo: '',
-    dias_semana: '5',
-    sentido: 'ida',
     periodo_meses: '',
     descricao: '',
   })
@@ -63,22 +68,19 @@ export default function NovaVagaPage() {
   const [errors, setErrors] = useState<FormErrors>({})
 
   // ── Estimativa mensal calculada em tempo real ────────────────────────────
+  // Fiel ao calcRemunPreview do dashboard-transportadora-v8.html
   const estimativa = useMemo(() => {
-    const km = Number(form.km_estimado)
+    const km  = Number(form.km_estimado)
     const vkm = Number(form.valor_km)
     if (!km || !vkm || !form.frequencia_tipo) return null
 
-    const kmViagem = form.sentido === 'ida_volta' ? km * 2 : km
-    let dias: number
-    switch (form.frequencia_tipo) {
-      case 'diaria':    dias = (Number(form.dias_semana) || 5) * 4; break
-      case 'semanal':   dias = 4;  break
-      case 'quinzenal': dias = 2;  break
-      case 'mensal':    dias = 1;  break
-      default: return null
-    }
-    return { valorViagem: kmViagem * vkm, diasMes: dias, total: kmViagem * vkm * dias, kmViagem, kmMes: kmViagem * dias }
-  }, [form.km_estimado, form.valor_km, form.frequencia_tipo, form.dias_semana, form.sentido])
+    const freqOpt = FREQ_OPTIONS.find(f => f.value === form.frequencia_tipo)
+    if (!freqOpt || freqOpt.mult === 0) return null   // sob_demanda sem estimativa
+
+    const valorViagem = km * vkm
+    const diasMes     = freqOpt.mult
+    return { valorViagem, diasMes, total: valorViagem * diasMes, kmMes: km * diasMes }
+  }, [form.km_estimado, form.valor_km, form.frequencia_tipo])
 
   function handleChange(field: keyof FormData, value: string | boolean) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -89,31 +91,20 @@ export default function NovaVagaPage() {
 
   function validate(): boolean {
     const newErrors: FormErrors = {}
-
-    if (!form.titulo.trim()) newErrors.titulo = 'Título da vaga é obrigatório'
+    if (!form.titulo.trim())      newErrors.titulo      = 'Título da vaga é obrigatório'
     if (!form.rota_origem.trim()) newErrors.rota_origem = 'Cidade de origem é obrigatória'
-    if (!form.rota_destino.trim()) newErrors.rota_destino = 'Cidade de destino é obrigatória'
-    if (!form.km_estimado || isNaN(Number(form.km_estimado)) || Number(form.km_estimado) <= 0) {
+    if (!form.rota_destino.trim())newErrors.rota_destino= 'Cidade de destino é obrigatória'
+    if (!form.km_estimado || isNaN(Number(form.km_estimado)) || Number(form.km_estimado) <= 0)
       newErrors.km_estimado = 'Informe a distância estimada em km'
-    }
     if (!form.tipo_veiculo) newErrors.tipo_veiculo = 'Selecione o tipo de veículo'
-    if (form.contrata_equipamento && !form.tipo_equipamento) {
+    if (form.contrata_equipamento && !form.tipo_equipamento)
       newErrors.tipo_equipamento = 'Selecione o tipo de equipamento'
-    }
-    if (!form.valor_km || isNaN(Number(form.valor_km)) || Number(form.valor_km) <= 0) {
+    if (!form.valor_km || isNaN(Number(form.valor_km)) || Number(form.valor_km) <= 0)
       newErrors.valor_km = 'Informe o valor pago por km (R$/km)'
-    }
-    if (!form.frequencia_tipo) {
+    if (!form.frequencia_tipo)
       newErrors.frequencia_tipo = 'Selecione a frequência das viagens'
-    }
-    if (form.frequencia_tipo === 'diaria') {
-      const d = Number(form.dias_semana)
-      if (!d || d < 1 || d > 7) newErrors.dias_semana = 'Informe os dias úteis por semana (1 a 7)'
-    }
-    if (!form.periodo_meses || isNaN(Number(form.periodo_meses)) || Number(form.periodo_meses) <= 0) {
+    if (!form.periodo_meses || isNaN(Number(form.periodo_meses)) || Number(form.periodo_meses) <= 0)
       newErrors.periodo_meses = 'Informe o período em meses'
-    }
-
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -123,16 +114,11 @@ export default function NovaVagaPage() {
     setSubmitError(null)
     if (!validate()) return
 
-    // Calcular valor_contrato (estimativa mensal) antes de salvar
-    const kmV = form.sentido === 'ida_volta' ? Number(form.km_estimado) * 2 : Number(form.km_estimado)
-    let diasMes: number
-    switch (form.frequencia_tipo) {
-      case 'semanal':   diasMes = 4;  break
-      case 'quinzenal': diasMes = 2;  break
-      case 'mensal':    diasMes = 1;  break
-      default:          diasMes = (Number(form.dias_semana) || 5) * 4
-    }
-    const valorContrato = kmV * Number(form.valor_km) * diasMes
+    // Calcular valor_contrato antes de salvar (null para sob_demanda)
+    const freqOpt = FREQ_OPTIONS.find(f => f.value === form.frequencia_tipo)
+    const valorContrato = freqOpt && freqOpt.mult > 0
+      ? Number(form.km_estimado) * Number(form.valor_km) * freqOpt.mult
+      : null
 
     setLoading(true)
     try {
@@ -151,8 +137,6 @@ export default function NovaVagaPage() {
         tipo_equipamento: form.contrata_equipamento ? form.tipo_equipamento : null,
         valor_km: Number(form.valor_km),
         frequencia_tipo: form.frequencia_tipo,
-        dias_semana: form.frequencia_tipo === 'diaria' ? Number(form.dias_semana) : null,
-        sentido: form.sentido,
         valor_contrato: valorContrato,
         periodo_meses: Number(form.periodo_meses),
         descricao: form.descricao.trim() || null,
@@ -228,32 +212,17 @@ export default function NovaVagaPage() {
               error={errors.rota_destino}
             />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="KM estimado da rota"
-              type="number"
-              min="1"
-              step="1"
-              placeholder="Ex: 580"
-              value={form.km_estimado}
-              onChange={e => handleChange('km_estimado', e.target.value)}
-              error={errors.km_estimado}
-              hint="Distância em km (somente ida)"
-            />
-            <Select
-              label="Sentido da viagem"
-              value={form.sentido}
-              onChange={e => handleChange('sentido', e.target.value)}
-            >
-              <option value="ida">Somente ida</option>
-              <option value="ida_volta">Ida e volta</option>
-            </Select>
-          </div>
-          {form.km_estimado && form.sentido === 'ida_volta' && (
-            <p className="text-xs text-text-muted">
-              Km por viagem (ida + volta): <span className="font-semibold">{Number(form.km_estimado) * 2} km</span>
-            </p>
-          )}
+          <Input
+            label="Distância (km)"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="Ex: 580"
+            value={form.km_estimado}
+            onChange={e => handleChange('km_estimado', e.target.value)}
+            error={errors.km_estimado}
+            hint="Distância em km entre origem e destino"
+          />
         </div>
 
         {/* Veículo e Equipamento */}
@@ -311,74 +280,59 @@ export default function NovaVagaPage() {
         <div className="bg-surface border border-border rounded-xl p-5 space-y-4">
           <div className="flex items-center gap-2 mb-1">
             <DollarSign size={16} className="text-text-muted" />
-            <h2 className="font-semibold text-text-primary text-sm uppercase tracking-wide">Precificação</h2>
+            <h2 className="font-semibold text-text-primary text-sm uppercase tracking-wide">Remuneração</h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
-              label="Valor pago por km (R$/km)"
+              label="Valor por km (R$/km)"
               type="number"
               min="0.01"
-              step="0.01"
+              step="0.10"
               placeholder="Ex: 4.80"
               value={form.valor_km}
               onChange={e => handleChange('valor_km', e.target.value)}
               error={errors.valor_km}
-              hint="Valor bruto pago ao agregado por km rodado"
+              hint="Remuneração bruta paga ao agregado por km rodado"
             />
-
             <Select
-              label="Frequência das viagens"
+              label="Frequência da rota"
               value={form.frequencia_tipo}
               onChange={e => handleChange('frequencia_tipo', e.target.value)}
               error={errors.frequencia_tipo}
             >
               <option value="">Selecione a frequência</option>
-              <option value="diaria">Diária</option>
-              <option value="semanal">Semanal (1×/semana)</option>
-              <option value="quinzenal">Quinzenal (2×/mês)</option>
-              <option value="mensal">Mensal (1×/mês)</option>
+              {FREQ_OPTIONS.map(f => (
+                <option key={f.value} value={f.value}>{f.label}</option>
+              ))}
             </Select>
           </div>
 
-          {form.frequencia_tipo === 'diaria' && (
-            <Input
-              label="Dias de trabalho por semana"
-              type="number"
-              min="1"
-              max="7"
-              step="1"
-              placeholder="Ex: 5"
-              value={form.dias_semana}
-              onChange={e => handleChange('dias_semana', e.target.value)}
-              error={errors.dias_semana}
-              hint="Dias úteis por semana em que o agregado realiza viagens"
-            />
-          )}
-
-          {/* Estimativa calculada em tempo real */}
-          {estimativa ? (
+          {/* Preview da estimativa mensal */}
+          {form.frequencia_tipo === 'sob_demanda' ? (
+            <div className="bg-bg border border-dashed border-border rounded-xl p-4 text-center text-sm text-text-muted">
+              Estimativa mensal indisponível para rotas sob demanda
+            </div>
+          ) : estimativa ? (
             <div className="bg-success-light border border-success/20 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp size={15} className="text-success" />
-                <p className="text-xs font-semibold text-success uppercase tracking-wide">Estimativa mensal calculada</p>
+                <p className="text-xs font-semibold text-success uppercase tracking-wide">Estimativa mensal</p>
               </div>
-              <p className="font-bold text-success text-2xl mb-2">{formatCurrency(estimativa.total)}<span className="text-sm font-normal">/mês</span></p>
+              <p className="font-bold text-success text-2xl mb-2">
+                {formatCurrency(estimativa.total)}<span className="text-sm font-normal">/mês</span>
+              </p>
               <div className="space-y-1 text-xs text-text-secondary">
-                <div className="flex justify-between">
-                  <span>Km por viagem</span>
-                  <span className="font-medium">{estimativa.kmViagem.toLocaleString('pt-BR')} km</span>
-                </div>
                 <div className="flex justify-between">
                   <span>Valor por viagem</span>
                   <span className="font-medium">{formatCurrency(estimativa.valorViagem)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>× dias produtivos/mês</span>
-                  <span className="font-medium">{estimativa.diasMes} dias</span>
+                  <span>× viagens no mês</span>
+                  <span className="font-medium">{estimativa.diasMes} viagens</span>
                 </div>
                 <div className="border-t border-success/20 pt-1 flex justify-between font-semibold text-success">
-                  <span>Km total/mês</span>
+                  <span>Km total estimado/mês</span>
                   <span>{estimativa.kmMes.toLocaleString('pt-BR')} km</span>
                 </div>
               </div>
@@ -426,17 +380,9 @@ export default function NovaVagaPage() {
         {/* Submit */}
         <div className="flex gap-3 pb-4">
           <Link href="/transportadora/vagas" className="flex-1">
-            <Button variant="ghost" fullWidth type="button">
-              Cancelar
-            </Button>
+            <Button variant="ghost" fullWidth type="button">Cancelar</Button>
           </Link>
-          <Button
-            type="submit"
-            loading={loading}
-            fullWidth
-            className="flex-1"
-            disabled={!estimativa}
-          >
+          <Button type="submit" loading={loading} fullWidth className="flex-1">
             {loading ? 'Publicando...' : 'Publicar vaga'}
           </Button>
         </div>

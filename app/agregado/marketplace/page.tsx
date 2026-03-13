@@ -7,7 +7,7 @@ import { Select } from '@/components/ui/Input'
 import {
   formatCurrency, TIPOS_VEICULO, TIPOS_EQUIPAMENTO,
   type Vaga, type CustoKmConfig,
-  calcEstimativaMensal, calcKmMensal, calcKmViagem, calcDiasMes, labelFrequencia,
+  calcEstimativaMensal, calcKmMensal, calcDiasMes, labelFrequencia,
 } from '@/lib/types'
 import { MapPin, ChevronRight, Store, AlertCircle } from 'lucide-react'
 
@@ -28,15 +28,8 @@ function recalcLegado(config: CustoKmConfig): number | null {
 }
 
 /**
- * Analisa viabilidade financeira da vaga para este agregado.
- *
- * Fórmula:
- *   ratio = estimativa_mensal / (custo_km_total × km_mensal)
- *
- * Onde:
- *   estimativa_mensal = valor_km × km_viagem × dias_mes
- *   km_mensal         = km_viagem × dias_mes
- *   km_viagem         = km_estimado × (ida_volta ? 2 : 1)
+ * Analisa viabilidade financeira — fiel à lógica de openVagaDetail do HTML de referência.
+ *   ratio = estimativa_mensal / (custo_km × km_mensal)
  */
 function getAnalise(
   vaga: Vaga,
@@ -48,7 +41,7 @@ function getAnalise(
   if (!custoKmTotal) return { label: 'Configure seu custo/km', variant: 'muted' }
 
   const estimativa = calcEstimativaMensal(vaga)
-  const kmMes = calcKmMensal(vaga)
+  const kmMes      = calcKmMensal(vaga)
 
   if (!estimativa || !kmMes) return { label: 'Sem dados suficientes', variant: 'muted' }
 
@@ -104,7 +97,7 @@ export default function MarketplaceAgregadoPage() {
         </Link>
       )}
 
-      {/* Filters */}
+      {/* Filtros */}
       <div className="flex gap-2 mb-4">
         <Select value={filtroVeiculo} onChange={e => setFiltroVeiculo(e.target.value)} className="flex-1 py-2 text-sm">
           <option value="">Tipo de veículo</option>
@@ -127,7 +120,6 @@ export default function MarketplaceAgregadoPage() {
           {filtradas.map(vaga => {
             const analise    = getAnalise(vaga, custoConfig)
             const estimativa = calcEstimativaMensal(vaga)
-            const kmViagem   = calcKmViagem(vaga)
             const diasMes    = calcDiasMes(vaga)
 
             return (
@@ -168,18 +160,15 @@ export default function MarketplaceAgregadoPage() {
                       </p>
                     </div>
                     {/* Mini breakdown quando há dados de precificação */}
-                    {vaga.valor_km && kmViagem && diasMes && (
+                    {vaga.valor_km && vaga.km_estimado && diasMes && (
                       <p className="text-xs text-text-muted text-right leading-relaxed">
-                        {formatCurrency(vaga.valor_km)}/km<br />
-                        × {kmViagem.toLocaleString('pt-BR')} km × {diasMes} dias
+                        {formatCurrency(vaga.valor_km)}/km × {vaga.km_estimado} km × {diasMes} viagens
                       </p>
                     )}
                   </div>
-                  {/* Frequência */}
                   {vaga.frequencia_tipo && (
                     <p className="text-xs text-text-muted mt-1.5 border-t border-border pt-1.5">
-                      Frequência: {labelFrequencia(vaga)}
-                      {vaga.sentido === 'ida_volta' ? ' · Ida e volta' : ' · Somente ida'}
+                      {labelFrequencia(vaga)}
                     </p>
                   )}
                 </div>
