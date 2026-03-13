@@ -6,28 +6,31 @@ import { createClient } from '@/lib/supabase'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
-import { formatCurrency, TIPOS_VEICULO, type Vaga } from '@/lib/types'
+import { formatCurrency, type Vaga } from '@/lib/types'
 import {
   Plus, MapPin, Truck, Users, Clock, ChevronRight,
-  Loader2, AlertCircle, Package
+  Loader2, AlertCircle, Package, Pencil, PauseCircle,
+  PlayCircle, Copy,
 } from 'lucide-react'
 
-type StatusFilter = 'all' | 'ativa' | 'encerrada' | 'preenchida'
+type StatusFilter = 'all' | 'ativa' | 'pausada' | 'encerrada' | 'preenchida'
 
 interface VagaWithCount extends Vaga {
   candidaturas_count: number
 }
 
 function StatusBadge({ status }: { status: Vaga['status'] }) {
-  if (status === 'ativa') return <Badge variant="success">Ativa</Badge>
-  if (status === 'encerrada') return <Badge variant="warning">Encerrada</Badge>
+  if (status === 'ativa')      return <Badge variant="success">Ativa</Badge>
+  if (status === 'pausada')    return <Badge variant="warning">Pausada</Badge>
+  if (status === 'encerrada')  return <Badge variant="warning">Encerrada</Badge>
   return <Badge variant="info">Preenchida</Badge>
 }
 
 const STATUS_LABELS: Record<StatusFilter, string> = {
-  all: 'Todas',
-  ativa: 'Ativas',
-  encerrada: 'Encerradas',
+  all:        'Todas',
+  ativa:      'Ativas',
+  pausada:    'Pausadas',
+  encerrada:  'Encerradas',
   preenchida: 'Preenchidas',
 }
 
@@ -37,7 +40,8 @@ export default function TransportadoraVagasPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<StatusFilter>('all')
-  const [encerrandoId, setEncerrandoId] = useState<string | null>(null)
+  const [actionId, setActionId] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<string | null>(null)
 
   const fetchVagas = useCallback(async () => {
     setLoading(true)
@@ -58,7 +62,6 @@ export default function TransportadoraVagasPage() {
       }
 
       const { data: vagasData, error: vagasError } = await query
-
       if (vagasError) throw vagasError
 
       if (!vagasData || vagasData.length === 0) {
@@ -67,7 +70,6 @@ export default function TransportadoraVagasPage() {
         return
       }
 
-      // Fetch candidaturas counts per vaga
       const vagaIds = vagasData.map(v => v.id)
       const { data: candidaturasData } = await supabase
         .from('candidaturas')
@@ -79,39 +81,85 @@ export default function TransportadoraVagasPage() {
         countMap[c.vaga_id] = (countMap[c.vaga_id] ?? 0) + 1
       })
 
-      const vagasWithCount: VagaWithCount[] = vagasData.map(v => ({
-        ...v,
-        candidaturas_count: countMap[v.id] ?? 0,
-      }))
-
-      setVagas(vagasWithCount)
+      setVagas(vagasData.map(v => ({ ...v, candidaturas_count: countMap[v.id] ?? 0 })))
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar vagas')
+      setError((err as { message?: string })?.message ?? 'Erro ao carregar vagas')
     } finally {
       setLoading(false)
     }
   }, [filter, router])
 
-  useEffect(() => {
-    fetchVagas()
-  }, [fetchVagas])
+  useEffect(() => { fetchVagas() }, [fetchVagas])
+
+  function showFeedback(msg: string) {
+    setFeedback(msg)
+    setTimeout(() => setFeedback(null), 3000)
+  }
+
+  async function handlePausar(vaga: VagaWithCount) {
+    const novoStatus = vaga.status === 'pausada' ? 'ativa' : 'pausada'
+    const label = novoStatus === 'pausada' ? 'pausar' : 'reativar'
+    if (!confirm(`Deseja ${label} esta vaga?`)) return
+
+    setActionId(vaga.id)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('vagas')
+        .update({ status: novoStatus })
+        .eq('id', vaga.id)
+      if (error) throw error
+      setVagas(prev => prev.map(v => v.id === vaga.id ? { ...v, status: novoStatus } : v))
+      showFeedback(novoStatus === 'pausada' ? 'Vaga pausada.' : 'Vaga reativada.')
+    } catch (err: unknown) {
+      alert((err as { message?: string })?.message ?? `Erro ao ${label} vaga`)
+    } finally {
+      setActionId(null)
+    }
+  }
 
   async function handleEncerrar(vagaId: string) {
-    if (!confirm('Deseja encerrar esta vaga? Candidaturas pendentes serão mantidas.')) return
-    setEncerrandoId(vagaId)
+    if (!confirm('Deseja encerrar esta vaga? Esta ação não pode ser desfeita facilmente.')) return
+    setActionId(vagaId)
     try {
       const supabase = createClient()
       const { error } = await supabase
         .from('vagas')
         .update({ status: 'encerrada' })
         .eq('id', vagaId)
-
       if (error) throw error
       setVagas(prev => prev.map(v => v.id === vagaId ? { ...v, status: 'encerrada' } : v))
+      showFeedback('Vaga encerrada.')
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Erro ao encerrar vaga')
+      alert((err as { message?: string })?.message ?? 'Erro ao encerrar vaga')
     } finally {
-      setEncerrandoId(null)
+      setActionId(null)
+    }
+  }
+
+  async function handleDuplicar(vaga: VagaWithCount) {
+    if (!confirm('Duplicar esta vaga? Uma cópia ativa será criada.')) return
+    setActionId(vaga.id + '_dup')
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { id, created_at, candidaturas_count, ...rest } = vaga
+      const { error } = await supabase.from('vagas').insert({
+        ...rest,
+        transportadora_id: user.id,
+        titulo: (rest.titulo ? rest.titulo + ' (cópia)' : null),
+        status: 'ativa',
+      })
+      if (error) throw error
+      showFeedback('Vaga duplicada com sucesso!')
+      fetchVagas()
+    } catch (err: unknown) {
+      alert((err as { message?: string })?.message ?? 'Erro ao duplicar vaga')
+    } finally {
+      setActionId(null)
     }
   }
 
@@ -130,6 +178,13 @@ export default function TransportadoraVagasPage() {
           </Button>
         </Link>
       </div>
+
+      {/* Feedback toast */}
+      {feedback && (
+        <div className="bg-success-light border border-success/20 rounded-xl px-4 py-3 text-sm text-success font-medium">
+          {feedback}
+        </div>
+      )}
 
       {/* Filter tabs */}
       <div className="flex gap-1 bg-surface border border-border rounded-lg p-1 w-fit overflow-x-auto">
@@ -186,8 +241,12 @@ export default function TransportadoraVagasPage() {
         <div className="flex flex-col gap-3">
           {vagas.map((vaga) => (
             <Card key={vaga.id} padding="none" className="overflow-hidden hover:shadow-card-hover transition-shadow">
-              {/* Status color stripe */}
-              <div className={`h-1 ${vaga.status === 'ativa' ? 'bg-success' : vaga.status === 'encerrada' ? 'bg-warning' : 'bg-info'}`} />
+              {/* Status stripe */}
+              <div className={`h-1 ${
+                vaga.status === 'ativa'     ? 'bg-success' :
+                vaga.status === 'pausada'   ? 'bg-warning' :
+                vaga.status === 'encerrada' ? 'bg-text-muted' : 'bg-info'
+              }`} />
               <div className="p-4">
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="flex-1 min-w-0">
@@ -238,21 +297,67 @@ export default function TransportadoraVagasPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2 pt-3 border-t border-border">
-                  <Link href={`/transportadora/vagas/${vaga.id}`} className="flex-1">
+                <div className="flex items-center gap-2 pt-3 border-t border-border flex-wrap">
+                  {/* Ver candidatos */}
+                  <Link href={`/transportadora/vagas/${vaga.id}`} className="flex-1 min-w-[120px]">
                     <Button variant="secondary" size="sm" fullWidth className="gap-2">
                       <Users size={14} />
                       Ver candidatos
                       <ChevronRight size={13} className="ml-auto" />
                     </Button>
                   </Link>
+
+                  {/* Editar — sempre disponível */}
+                  <Link href={`/transportadora/vagas/${vaga.id}/editar`}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1.5 text-text-secondary hover:text-text-primary"
+                      title="Editar vaga"
+                    >
+                      <Pencil size={14} />
+                      Editar
+                    </Button>
+                  </Link>
+
+                  {/* Duplicar */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 text-text-secondary hover:text-text-primary"
+                    onClick={() => handleDuplicar(vaga)}
+                    loading={actionId === vaga.id + '_dup'}
+                    title="Duplicar vaga"
+                  >
+                    <Copy size={14} />
+                    Duplicar
+                  </Button>
+
+                  {/* Pausar / Reativar — só para ativa e pausada */}
+                  {(vaga.status === 'ativa' || vaga.status === 'pausada') && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`gap-1.5 ${vaga.status === 'pausada' ? 'text-success hover:text-success' : 'text-warning hover:text-warning'}`}
+                      onClick={() => handlePausar(vaga)}
+                      loading={actionId === vaga.id}
+                      title={vaga.status === 'pausada' ? 'Reativar vaga' : 'Pausar vaga'}
+                    >
+                      {vaga.status === 'pausada'
+                        ? <><PlayCircle size={14} />Reativar</>
+                        : <><PauseCircle size={14} />Pausar</>
+                      }
+                    </Button>
+                  )}
+
+                  {/* Encerrar — só para ativa */}
                   {vaga.status === 'ativa' && (
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleEncerrar(vaga.id)}
-                      loading={encerrandoId === vaga.id}
-                      className="text-warning border-warning/30 hover:bg-warning-light"
+                      loading={actionId === vaga.id}
+                      className="text-danger border-danger/20 hover:bg-danger-light"
                     >
                       Encerrar
                     </Button>

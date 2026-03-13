@@ -11,6 +11,7 @@ import {
   ArrowLeft, MapPin, Truck, Package, Clock, DollarSign,
   Users, User, MessageSquare, CheckCircle2, XCircle,
   Loader2, AlertCircle, CalendarDays, TrendingUp, RefreshCw,
+  Pencil, PauseCircle, PlayCircle, Copy,
 } from 'lucide-react'
 
 interface Profile {
@@ -45,8 +46,9 @@ function StatusBadge({ status }: { status: Candidatura['status'] }) {
 }
 
 function VagaStatusBadge({ status }: { status: Vaga['status'] }) {
-  if (status === 'ativa') return <Badge variant="success">Ativa</Badge>
-  if (status === 'encerrada') return <Badge variant="warning">Encerrada</Badge>
+  if (status === 'ativa')      return <Badge variant="success">Ativa</Badge>
+  if (status === 'pausada')    return <Badge variant="warning">Pausada</Badge>
+  if (status === 'encerrada')  return <Badge variant="warning">Encerrada</Badge>
   return <Badge variant="info">Preenchida</Badge>
 }
 
@@ -66,6 +68,57 @@ export default function VagaDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<string | null>(null)
+
+  function showFeedback(msg: string) {
+    setFeedback(msg)
+    setTimeout(() => setFeedback(null), 3000)
+  }
+
+  async function handlePausar() {
+    if (!vaga) return
+    const novoStatus = vaga.status === 'pausada' ? 'ativa' : 'pausada'
+    const label = novoStatus === 'pausada' ? 'pausar' : 'reativar'
+    if (!confirm(`Deseja ${label} esta vaga?`)) return
+    setActionLoading('pausar')
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('vagas').update({ status: novoStatus }).eq('id', vagaId)
+      if (error) throw error
+      setVaga(prev => prev ? { ...prev, status: novoStatus } : prev)
+      showFeedback(novoStatus === 'pausada' ? 'Vaga pausada.' : 'Vaga reativada.')
+    } catch (err: unknown) {
+      alert((err as { message?: string })?.message ?? `Erro ao ${label} vaga`)
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  async function handleDuplicar() {
+    if (!vaga) return
+    if (!confirm('Duplicar esta vaga? Uma cópia ativa será criada.')) return
+    setActionLoading('duplicar')
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { id, created_at, transportadora, ...rest } = vaga
+      const { error } = await supabase.from('vagas').insert({
+        ...rest,
+        transportadora_id: user.id,
+        titulo: (rest.titulo ? rest.titulo + ' (cópia)' : null),
+        status: 'ativa',
+      })
+      if (error) throw error
+      showFeedback('Vaga duplicada! Verifique a lista de vagas.')
+    } catch (err: unknown) {
+      alert((err as { message?: string })?.message ?? 'Erro ao duplicar vaga')
+    } finally {
+      setActionLoading(null)
+    }
+  }
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -229,6 +282,11 @@ export default function VagaDetailPage() {
             Voltar para vagas
           </button>
         </Link>
+        {feedback && (
+          <div className="bg-success-light border border-success/20 rounded-xl px-4 py-3 text-sm text-success font-medium mb-2">
+            {feedback}
+          </div>
+        )}
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -238,6 +296,40 @@ export default function VagaDetailPage() {
             <p className="text-text-muted text-sm mt-1">
               Publicada em {formatDate(vaga.created_at)}
             </p>
+          </div>
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link href={`/transportadora/vagas/${vagaId}/editar`}>
+              <Button variant="secondary" size="sm" className="gap-1.5">
+                <Pencil size={14} />
+                Editar
+              </Button>
+            </Link>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-text-secondary"
+              onClick={handleDuplicar}
+              loading={actionLoading === 'duplicar'}
+              title="Duplicar vaga"
+            >
+              <Copy size={14} />
+              Duplicar
+            </Button>
+            {(vaga.status === 'ativa' || vaga.status === 'pausada') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`gap-1.5 ${vaga.status === 'pausada' ? 'text-success' : 'text-warning'}`}
+                onClick={handlePausar}
+                loading={actionLoading === 'pausar'}
+              >
+                {vaga.status === 'pausada'
+                  ? <><PlayCircle size={14} />Reativar</>
+                  : <><PauseCircle size={14} />Pausar</>
+                }
+              </Button>
+            )}
           </div>
         </div>
       </div>

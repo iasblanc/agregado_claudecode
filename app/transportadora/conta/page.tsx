@@ -2,8 +2,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { Building2, Users, CreditCard, Bell, Link as LinkIcon, Shield, Loader2, CheckCircle2 } from 'lucide-react'
-import { Input, Textarea } from '@/components/ui/Input'
+import { Building2, Users, CreditCard, Bell, Link as LinkIcon, Shield, Loader2, CheckCircle2, UserPlus, Trash2, Crown, Briefcase, Eye } from 'lucide-react'
+import { Input, Select, Textarea } from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 
 type ContaTab = 'perfil' | 'usuarios' | 'plano' | 'notificacoes' | 'integracao' | 'seguranca'
@@ -83,6 +83,79 @@ export default function ContaPage() {
     novidades_email: false,     novidades_push: false,
   })
 
+  // Equipe / usuários
+  interface MembroEquipe {
+    id: string
+    email: string
+    nome: string | null
+    role: 'administrador' | 'operador' | 'visualizador'
+    status: 'ativo' | 'pendente' | 'inativo'
+    created_at: string
+  }
+  const [equipe, setEquipe] = useState<MembroEquipe[]>([])
+  const [equipeLoading, setEquipeLoading] = useState(false)
+  const [showInviteForm, setShowInviteForm] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteNome, setInviteNome] = useState('')
+  const [inviteRole, setInviteRole] = useState<'administrador' | 'operador' | 'visualizador'>('operador')
+  const [inviteError, setInviteError] = useState('')
+  const [inviting, setInviting] = useState(false)
+
+  async function loadEquipe(userId: string) {
+    setEquipeLoading(true)
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('equipe_transportadora')
+      .select('*')
+      .eq('transportadora_id', userId)
+      .order('created_at', { ascending: false })
+    setEquipe((data ?? []) as MembroEquipe[])
+    setEquipeLoading(false)
+  }
+
+  async function handleConvidar(userId: string) {
+    setInviteError('')
+    if (!inviteEmail.trim()) { setInviteError('Informe o e-mail'); return }
+    if (!inviteEmail.includes('@')) { setInviteError('E-mail inválido'); return }
+    setInviting(true)
+    const supabase = createClient()
+    const { error } = await supabase.from('equipe_transportadora').insert({
+      transportadora_id: userId,
+      email: inviteEmail.trim().toLowerCase(),
+      nome: inviteNome.trim() || null,
+      role: inviteRole,
+      status: 'pendente',
+    })
+    if (error) {
+      setInviteError(error.message.includes('unique') ? 'Este e-mail já está na equipe.' : error.message)
+    } else {
+      setInviteEmail('')
+      setInviteNome('')
+      setInviteRole('operador')
+      setShowInviteForm(false)
+      await loadEquipe(userId)
+    }
+    setInviting(false)
+  }
+
+  async function handleRemoverMembro(membroId: string, userId: string) {
+    if (!confirm('Remover este membro da equipe?')) return
+    const supabase = createClient()
+    await supabase.from('equipe_transportadora').delete().eq('id', membroId)
+    setEquipe(prev => prev.filter(m => m.id !== membroId))
+    void userId
+  }
+
+  async function handleChangeRole(membroId: string, novoRole: MembroEquipe['role'], userId: string) {
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('equipe_transportadora')
+      .update({ role: novoRole })
+      .eq('id', membroId)
+    if (!error) setEquipe(prev => prev.map(m => m.id === membroId ? { ...m, role: novoRole } : m))
+    void userId
+  }
+
   // Segurança
   const [senhaAtual, setSenhaAtual] = useState('')
   const [novaSenha, setNovaSenha] = useState('')
@@ -96,6 +169,7 @@ export default function ContaPage() {
       if (!user) { router.push('/auth/login'); return }
 
       setEmail(user.email ?? '')
+      loadEquipe(user.id)
 
       const { data: trans } = await supabase
         .from('transportadoras')
@@ -237,10 +311,152 @@ export default function ContaPage() {
 
           {/* USUÁRIOS */}
           {tab === 'usuarios' && (
-            <div className="bg-surface border border-border rounded-xl p-8 text-center">
-              <Users size={32} className="text-text-muted mx-auto mb-3" />
-              <p className="font-medium text-text-secondary">Gestão de usuários</p>
-              <p className="text-sm text-text-muted mt-1">Em breve — adicione operadores e defina permissões</p>
+            <div className="space-y-5">
+              {/* Role legend */}
+              <div className="bg-surface border border-border rounded-xl p-5">
+                <h2 className="font-semibold text-text-primary text-sm uppercase tracking-wide mb-3">Níveis de acesso</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {([
+                    { role: 'administrador', icon: <Crown size={15} className="text-warning" />, color: 'bg-warning-light border-warning/20 text-warning', desc: 'Acesso total: vagas, candidatos, contratos, configurações e equipe.' },
+                    { role: 'operador',      icon: <Briefcase size={15} className="text-info" />,    color: 'bg-info-light border-info/20 text-info',       desc: 'Gerencia vagas, candidatos e contratos. Sem acesso a configurações.' },
+                    { role: 'visualizador',  icon: <Eye size={15} className="text-text-muted" />,    color: 'bg-surface border-border text-text-secondary', desc: 'Somente leitura. Não pode criar ou alterar nenhum dado.' },
+                  ] as const).map(item => (
+                    <div key={item.role} className={`rounded-xl border p-3 ${item.color}`}>
+                      <div className="flex items-center gap-2 mb-1 font-semibold text-sm capitalize">
+                        {item.icon}
+                        {item.role}
+                      </div>
+                      <p className="text-xs opacity-80">{item.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Member list */}
+              <div className="bg-surface border border-border rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-semibold text-text-primary text-sm uppercase tracking-wide">Membros da equipe</h2>
+                  {!showInviteForm && (
+                    <Button size="sm" className="gap-1.5" onClick={() => setShowInviteForm(true)}>
+                      <UserPlus size={14} />
+                      Convidar
+                    </Button>
+                  )}
+                </div>
+
+                {/* Invite form */}
+                {showInviteForm && (
+                  <div className="bg-bg border border-border rounded-xl p-4 mb-4 space-y-3">
+                    <p className="text-sm font-semibold text-text-primary">Novo membro</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Input
+                        label="E-mail"
+                        type="email"
+                        placeholder="nome@empresa.com"
+                        value={inviteEmail}
+                        onChange={e => setInviteEmail(e.target.value)}
+                        error={inviteError}
+                      />
+                      <Input
+                        label="Nome (opcional)"
+                        placeholder="Nome do colaborador"
+                        value={inviteNome}
+                        onChange={e => setInviteNome(e.target.value)}
+                      />
+                    </div>
+                    <Select
+                      label="Papel / nível de acesso"
+                      value={inviteRole}
+                      onChange={e => setInviteRole(e.target.value as MembroEquipe['role'])}
+                    >
+                      <option value="administrador">Administrador — acesso total</option>
+                      <option value="operador">Operador — gerencia vagas e candidatos</option>
+                      <option value="visualizador">Visualizador — somente leitura</option>
+                    </Select>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        loading={inviting}
+                        onClick={async () => {
+                          const supabase = createClient()
+                          const { data: { user } } = await supabase.auth.getUser()
+                          if (user) await handleConvidar(user.id)
+                        }}
+                      >
+                        Adicionar membro
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => { setShowInviteForm(false); setInviteError('') }}>
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Members */}
+                {equipeLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 size={22} className="animate-spin text-text-muted" />
+                  </div>
+                ) : equipe.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users size={28} className="text-text-muted mx-auto mb-2" />
+                    <p className="text-sm text-text-secondary">Nenhum membro adicionado ainda</p>
+                    <p className="text-xs text-text-muted mt-1">Convide colaboradores para gerenciar vagas e candidatos</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {equipe.map(membro => (
+                      <div key={membro.id} className="flex items-center gap-3 py-3">
+                        <div className="w-9 h-9 rounded-full bg-[#E0DAD0] flex items-center justify-center flex-shrink-0 font-semibold text-text-secondary text-sm">
+                          {(membro.nome || membro.email)[0].toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-text-primary truncate">
+                            {membro.nome || membro.email}
+                          </p>
+                          <p className="text-xs text-text-muted truncate">{membro.email}</p>
+                        </div>
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-pill border flex-shrink-0 ${
+                          membro.status === 'pendente'
+                            ? 'bg-warning-light border-warning/20 text-warning'
+                            : 'bg-success-light border-success/20 text-success'
+                        }`}>
+                          {membro.status === 'pendente' ? 'Pendente' : 'Ativo'}
+                        </span>
+                        <select
+                          value={membro.role}
+                          onChange={async e => {
+                            const supabase = createClient()
+                            const { data: { user } } = await supabase.auth.getUser()
+                            if (user) await handleChangeRole(membro.id, e.target.value as MembroEquipe['role'], user.id)
+                          }}
+                          className="text-xs border border-border rounded-lg px-2 py-1 bg-bg text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent/50 flex-shrink-0"
+                        >
+                          <option value="administrador">Administrador</option>
+                          <option value="operador">Operador</option>
+                          <option value="visualizador">Visualizador</option>
+                        </select>
+                        <button
+                          onClick={async () => {
+                            const supabase = createClient()
+                            const { data: { user } } = await supabase.auth.getUser()
+                            if (user) await handleRemoverMembro(membro.id, user.id)
+                          }}
+                          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-danger-light text-text-muted hover:text-danger transition-colors flex-shrink-0"
+                          title="Remover membro"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <p className="text-xs text-text-muted px-1">
+                Os membros adicionados receberão acesso à conta da transportadora com o nível de permissão selecionado.
+                Membros com status &ldquo;Pendente&rdquo; ainda não confirmaram o acesso.
+              </p>
             </div>
           )}
 

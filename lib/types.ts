@@ -127,7 +127,7 @@ export interface Vaga {
   criterios_op: string[] | null
   requisitos_adicionais: string[] | null
   beneficios: string[] | null
-  status: 'ativa' | 'encerrada' | 'preenchida'
+  status: 'ativa' | 'pausada' | 'encerrada' | 'preenchida'
   created_at: string
   // joined
   transportadora?: {
