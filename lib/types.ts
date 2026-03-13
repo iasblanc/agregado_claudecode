@@ -102,16 +102,31 @@ export interface Vaga {
   titulo: string | null
   rota_origem: string | null
   rota_destino: string | null
+  uf_origem: string | null
+  uf_destino: string | null
   km_estimado: number | null
   tipo_veiculo: string | null
   tipo_equipamento: string | null
+  equip_obs: string | null
+  tipo_carga: string | null
+  vagas_abertas: number | null
+  inicio_previsto: string | null
+  ano_maximo_veiculo: number | null
   // Precificação por km (fórmula de estimativa mensal)
   valor_km: number | null       // R$/km pago pela transportadora
   frequencia_tipo: 'diaria' | '2x_semana' | '3x_semana' | 'semanal' | 'quinzenal' | 'sob_demanda' | null
   valor_contrato: number | null // estimativa mensal = valor_km × km_estimado × freq_mult
+  forma_pagamento: string | null
+  adiantamento: number | null
   periodo_meses: number | null
+  jornada: string | null
   descricao: string | null
   contrata_equipamento: boolean
+  criterios_hab: string[] | null
+  criterios_doc: string[] | null
+  criterios_op: string[] | null
+  requisitos_adicionais: string[] | null
+  beneficios: string[] | null
   status: 'ativa' | 'encerrada' | 'preenchida'
   created_at: string
   // joined
@@ -178,8 +193,24 @@ export interface Candidatura {
   veiculo_id: string | null
   equipamento_id: string | null
   motorista_id: string | null
-  status: 'pendente' | 'aceito' | 'recusado'
+  status: 'pendente' | 'visualizado' | 'em_negociacao' | 'em_formalizacao' | 'aceito' | 'contratado' | 'recusado'
   mensagem: string | null
+  created_at: string
+}
+
+export interface ContratoMotorista {
+  id: string
+  candidatura_id: string
+  transportadora_id: string
+  agregado_id: string
+  vaga_id: string
+  status: 'ativo' | 'suspenso' | 'encerrado'
+  data_inicio: string | null
+  data_fim_prevista: string | null
+  observacoes: string | null
+  mensagens: { de: string; texto: string; hora: string }[]
+  timeline: { tipo: string; titulo: string; sub: string }[]
+  ocorrencias: { tipo: string; cor: string; desc: string; data: string }[]
   created_at: string
 }
 
