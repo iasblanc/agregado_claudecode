@@ -122,16 +122,27 @@ CREATE TABLE IF NOT EXISTS public.vagas (
   titulo TEXT,
   rota_origem TEXT,
   rota_destino TEXT,
-  km_estimado NUMERIC,
+  km_estimado NUMERIC,                              -- distância por viagem (km)
   tipo_veiculo TEXT,
   tipo_equipamento TEXT,
-  valor_contrato NUMERIC,
+  -- Precificação por km (fórmula de estimativa mensal)
+  valor_km NUMERIC,                                 -- R$/km pago pela transportadora
+  frequencia_tipo TEXT CHECK (frequencia_tipo IN ('diaria', 'semanal', 'quinzenal', 'mensal')),
+  dias_semana INTEGER CHECK (dias_semana BETWEEN 1 AND 7), -- dias úteis/sem (frequência diária)
+  sentido TEXT DEFAULT 'ida' CHECK (sentido IN ('ida', 'ida_volta')), -- somente ida ou ida+volta
+  valor_contrato NUMERIC,                           -- estimativa mensal = valor_km × km_viagem × dias_mes
   periodo_meses INTEGER,
   descricao TEXT,
   contrata_equipamento BOOLEAN DEFAULT FALSE,
   status TEXT DEFAULT 'ativa' CHECK (status IN ('ativa', 'encerrada', 'preenchida')),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migration: se a tabela já existe, adicione as novas colunas:
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS valor_km NUMERIC;
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS frequencia_tipo TEXT CHECK (frequencia_tipo IN ('diaria', 'semanal', 'quinzenal', 'mensal'));
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS dias_semana INTEGER CHECK (dias_semana BETWEEN 1 AND 7);
+-- ALTER TABLE public.vagas ADD COLUMN IF NOT EXISTS sentido TEXT DEFAULT 'ida' CHECK (sentido IN ('ida', 'ida_volta'));
 
 -- Candidaturas
 CREATE TABLE IF NOT EXISTS public.candidaturas (

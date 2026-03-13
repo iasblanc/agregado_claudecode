@@ -5,8 +5,12 @@ import { createClient } from '@/lib/supabase'
 import Button from '@/components/ui/Button'
 import { Select, Textarea } from '@/components/ui/Input'
 import Badge from '@/components/ui/Badge'
-import { formatCurrency, type Vaga, type Veiculo, type Equipamento, type Motorista } from '@/lib/types'
-import { MapPin, Truck, Package, User, AlertCircle, CheckCircle2 } from 'lucide-react'
+import {
+  formatCurrency, type Vaga, type Veiculo, type Equipamento, type Motorista,
+  calcEstimativaMensal, calcKmViagem, calcDiasMes, calcKmMensal,
+  labelFrequencia, labelSentido,
+} from '@/lib/types'
+import { MapPin, Truck, Package, User, AlertCircle, CheckCircle2, TrendingUp } from 'lucide-react'
 
 export default function VagaDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -83,7 +87,6 @@ export default function VagaDetailPage() {
   if (loading) return <div className="px-4 py-10 text-center text-text-muted">Carregando...</div>
   if (!vaga) return <div className="px-4 py-10 text-center text-text-muted">Vaga não encontrada</div>
 
-  // Filter vehicles by required type
   const veiculosFiltrados = vaga.tipo_veiculo
     ? veiculos.filter(v => v.tipo === vaga.tipo_veiculo)
     : veiculos
@@ -91,6 +94,12 @@ export default function VagaDetailPage() {
   const equipFiltrados = vaga.tipo_equipamento
     ? equipamentos.filter(e => e.tipo === vaga.tipo_equipamento)
     : equipamentos
+
+  const estimativa = calcEstimativaMensal(vaga)
+  const kmViagem   = calcKmViagem(vaga)
+  const diasMes    = calcDiasMes(vaga)
+  const kmMes      = calcKmMensal(vaga)
+  const temFormula = !!(vaga.valor_km && vaga.frequencia_tipo)
 
   return (
     <div className="px-4 py-5 max-w-2xl mx-auto">
@@ -120,20 +129,81 @@ export default function VagaDetailPage() {
           {vaga.contrata_equipamento && <Badge variant="info">Inclui equipamento</Badge>}
         </div>
 
+        {/* Grid de dados básicos */}
         <div className="grid grid-cols-3 gap-3 mb-4">
           <div className="bg-bg rounded-lg p-3 border border-border">
-            <p className="text-xs text-text-muted mb-0.5">KM estimado</p>
-            <p className="font-semibold text-text-primary text-sm">{vaga.km_estimado ? `${vaga.km_estimado} km` : '—'}</p>
+            <p className="text-xs text-text-muted mb-0.5">KM por viagem</p>
+            <p className="font-semibold text-text-primary text-sm">
+              {kmViagem ? `${kmViagem.toLocaleString('pt-BR')} km` : vaga.km_estimado ? `${vaga.km_estimado} km` : '—'}
+            </p>
+            {vaga.sentido === 'ida_volta' && (
+              <p className="text-xs text-text-muted">ida + volta</p>
+            )}
           </div>
           <div className="bg-bg rounded-lg p-3 border border-border">
             <p className="text-xs text-text-muted mb-0.5">Período</p>
             <p className="font-semibold text-text-primary text-sm">{vaga.periodo_meses ? `${vaga.periodo_meses} meses` : '—'}</p>
           </div>
-          <div className="bg-success-light border border-success/20 rounded-lg p-3">
-            <p className="text-xs text-success mb-0.5">Valor/mês</p>
-            <p className="font-bold text-success text-sm">{vaga.valor_contrato ? formatCurrency(vaga.valor_contrato) : '—'}</p>
+          <div className="bg-bg rounded-lg p-3 border border-border">
+            <p className="text-xs text-text-muted mb-0.5">Valor/km</p>
+            <p className="font-semibold text-text-primary text-sm">
+              {vaga.valor_km ? `${formatCurrency(vaga.valor_km)}/km` : '—'}
+            </p>
           </div>
         </div>
+
+        {/* Estimativa mensal — bloco principal */}
+        {estimativa && (
+          <div className="bg-success-light border border-success/20 rounded-xl p-4 mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp size={15} className="text-success" />
+              <p className="text-xs font-semibold text-success uppercase tracking-wide">Estimativa de faturamento mensal</p>
+            </div>
+
+            <p className="font-bold text-success text-3xl mb-3">
+              {formatCurrency(estimativa)}
+              <span className="text-sm font-normal text-text-secondary">/mês</span>
+            </p>
+
+            {temFormula && kmViagem && diasMes && kmMes && (
+              <div className="space-y-1.5 text-sm border-t border-success/20 pt-3">
+                <div className="flex justify-between text-text-secondary">
+                  <span>Distância por viagem</span>
+                  <span className="font-medium text-text-primary">
+                    {kmViagem.toLocaleString('pt-BR')} km
+                    {vaga.sentido === 'ida_volta' && <span className="text-xs text-text-muted ml-1">(ida + volta)</span>}
+                  </span>
+                </div>
+                <div className="flex justify-between text-text-secondary">
+                  <span>Valor por viagem</span>
+                  <span className="font-medium text-text-primary">
+                    {vaga.valor_km ? formatCurrency(kmViagem * vaga.valor_km) : '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-text-secondary">
+                  <span>Frequência</span>
+                  <span className="font-medium text-text-primary">{labelFrequencia(vaga)}</span>
+                </div>
+                <div className="flex justify-between text-text-secondary">
+                  <span>Sentido</span>
+                  <span className="font-medium text-text-primary">{labelSentido(vaga)}</span>
+                </div>
+                <div className="flex justify-between font-semibold text-success border-t border-success/20 pt-1.5">
+                  <span>KM total estimado/mês</span>
+                  <span>{kmMes.toLocaleString('pt-BR')} km</span>
+                </div>
+                <p className="text-xs text-text-muted pt-0.5">
+                  Cálculo: {formatCurrency(vaga.valor_km ?? 0)}/km × {kmViagem.toLocaleString('pt-BR')} km × {diasMes} dias = {formatCurrency(estimativa)}/mês
+                </p>
+              </div>
+            )}
+
+            {/* Fallback: valor fixo legado */}
+            {!temFormula && (
+              <p className="text-xs text-text-muted">Valor mensal fixo informado pela transportadora</p>
+            )}
+          </div>
+        )}
 
         {vaga.descricao && (
           <div>
@@ -191,7 +261,7 @@ export default function VagaDetailPage() {
                 )}
               </div>
 
-              {/* Equipment selector (only if required) */}
+              {/* Equipment selector */}
               {vaga.contrata_equipamento && (
                 <div>
                   <label className="text-sm font-medium text-text-secondary mb-1 block">
@@ -235,7 +305,6 @@ export default function VagaDetailPage() {
                 )}
               </div>
 
-              {/* Message */}
               <Textarea label="Mensagem para a transportadora (opcional)" value={mensagem}
                 onChange={e => setMensagem(e.target.value)}
                 placeholder="Apresente-se, destaque sua experiência na rota ou mencione algo relevante..."
