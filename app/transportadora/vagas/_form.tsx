@@ -166,14 +166,14 @@ export default function VagaForm({ mode, vagaId }: VagaFormProps) {
     if (mode !== 'edit' || !vagaId) return
     async function loadVaga() {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) { router.push('/auth/login'); return }
 
       const { data: vaga, error } = await supabase
         .from('vagas')
         .select('*')
         .eq('id', vagaId)
-        .eq('transportadora_id', user.id)
+        .eq('transportadora_id', session.user.id)
         .single()
 
       if (error || !vaga) {
@@ -296,8 +296,8 @@ export default function VagaForm({ mode, vagaId }: VagaFormProps) {
     setLoading(true)
     try {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) { router.push('/auth/login'); return }
 
       const allReqs = customReqs.filter(r => r.trim())
 
@@ -334,7 +334,7 @@ export default function VagaForm({ mode, vagaId }: VagaFormProps) {
       if (mode === 'create') {
         const { error } = await supabase.from('vagas').insert({
           ...payload,
-          transportadora_id: user.id,
+          transportadora_id: session.user.id,
           status: 'ativa',
         })
         if (error) throw error
@@ -344,7 +344,7 @@ export default function VagaForm({ mode, vagaId }: VagaFormProps) {
           .from('vagas')
           .update(payload)
           .eq('id', vagaId!)
-          .eq('transportadora_id', user.id)
+          .eq('transportadora_id', session.user.id)
         if (error) throw error
         router.push(`/transportadora/vagas/${vagaId}`)
       }
