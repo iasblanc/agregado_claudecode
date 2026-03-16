@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { Users, Filter, CheckCircle2, X, Eye, ChevronRight, Loader2 } from 'lucide-react'
+import { Users, Filter, CheckCircle2, X, Eye, Loader2 } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
 
 // Status pipeline fiel ao HTML de referência
@@ -16,10 +16,12 @@ interface Candidatura {
   mensagem: string | null
   created_at: string
   vagas: {
+    id: string
     rota_origem: string | null
     rota_destino: string | null
     tipo_veiculo: string | null
     valor_km: number | null
+    periodo_meses: number | null
   } | null
   perfil: {
     nome: string | null
@@ -86,7 +88,7 @@ export default function CandidatosPage() {
       .from('candidaturas')
       .select(`
         id, vaga_id, agregado_id, status, mensagem, created_at,
-        vagas (rota_origem, rota_destino, tipo_veiculo, valor_km),
+        vagas (id, rota_origem, rota_destino, tipo_veiculo, valor_km, periodo_meses),
         perfil:profiles!agregado_id (nome),
         agregados (cpf, cnh),
         veiculos (tipo, placa, ano)
@@ -108,6 +110,38 @@ export default function CandidatosPage() {
   async function updateStatus(id: string, status: CandStatus) {
     setActionLoading(id)
     const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    if (status === 'aceito') {
+      // Aprovação: criar contrato_motorista + mover para em_formalizacao
+      const cand = candidaturas.find(c => c.id === id)
+      if (cand) {
+        const dataInicio = new Date().toISOString().split('T')[0]
+        const meses = cand.vagas?.periodo_meses ?? 12
+        const dataFim = new Date(Date.now() + meses * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+        await supabase.from('contratos_motorista').insert({
+          candidatura_id: id,
+          transportadora_id: user.id,
+          agregado_id: cand.agregado_id,
+          vaga_id: cand.vaga_id,
+          status: 'pendente_assinatura',
+          data_inicio: dataInicio,
+          data_fim_prevista: dataFim,
+        })
+        // Move candidatura para em_formalizacao (agregado verá na aba "Para assinar")
+        await supabase.from('candidaturas').update({ status: 'em_formalizacao' }).eq('id', id)
+        const finalStatus: CandStatus = 'em_formalizacao'
+        setCandidaturas(prev => prev.map(c => c.id === id ? { ...c, status: finalStatus } : c))
+        if (showModal && selectedCand?.id === id) {
+          setSelectedCand(prev => prev ? { ...prev, status: finalStatus } : null)
+        }
+        setActionLoading(null)
+        return
+      }
+    }
+
     await supabase.from('candidaturas').update({ status }).eq('id', id)
     setCandidaturas(prev => prev.map(c => c.id === id ? { ...c, status } : c))
     setActionLoading(null)
@@ -348,13 +382,13 @@ export default function CandidatosPage() {
               )}
               {PODE_APROVAR.includes(selectedCand.status) && (
                 <button
-                  onClick={() => {
-                    updateStatus(selectedCand.id, 'aceito')
+                  onClick={async () => {
+                    await updateStatus(selectedCand.id, 'aceito')
                     setShowModal(false)
                   }}
                   className="ml-auto px-4 py-2 rounded-pill bg-accent text-bg text-sm font-medium hover:opacity-90 transition-opacity"
                 >
-                  ✓ Aprovar e contratar →
+                  ✓ Aprovar → Formalizar contrato
                 </button>
               )}
             </div>

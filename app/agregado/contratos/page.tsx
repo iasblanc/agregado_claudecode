@@ -151,7 +151,14 @@ function SignModal({ candidatura, onClose, onSigned }: SignModalProps) {
     setSigning(true)
     try {
       const supabase = createClient()
+      // Atualiza candidatura para contratado
       await supabase.from('candidaturas').update({ status: 'contratado' }).eq('id', candidatura.id)
+      // Ativa o contrato gerado na aprovação
+      await supabase
+        .from('contratos_motorista')
+        .update({ status: 'ativo', data_inicio: new Date().toISOString().split('T')[0] })
+        .eq('candidatura_id', candidatura.id)
+        .eq('status', 'pendente_assinatura')
       setStep(4)
       onSigned(candidatura.id)
     } finally {
