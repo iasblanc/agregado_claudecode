@@ -362,7 +362,7 @@ function ContratoExpandido({
           >
             <t.icon size={12} />
             {t.label}
-            {'count' in t && t.count > 0 && (
+            {'count' in t && (t.count ?? 0) > 0 && (
               <span className="bg-[#E0DAD0] text-text-secondary text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
                 {t.count}
               </span>
