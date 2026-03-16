@@ -4,7 +4,7 @@ import { KpiCard } from '@/components/ui/Card'
 import Link from 'next/link'
 import {
   ChevronRight, FileText, MapPin, Star,
-  CheckCircle2, AlertTriangle, Info, Bell,
+  CheckCircle2, AlertTriangle, Info, Bell, ShieldAlert,
 } from 'lucide-react'
 import { formatCurrency, calcEstimativaMensal } from '@/lib/types'
 
@@ -28,6 +28,7 @@ export default async function AgregadoDashboard() {
     { data: avaliacoes },
     { count: veiculosCount },
     { data: vagasRecentes },
+    { data: documentos },
   ] = await Promise.all([
     supabase.from('profiles').select('nome, telefone').eq('id', user.id).single(),
     supabase.from('agregados').select('cpf, cnh').eq('id', user.id).maybeSingle(),
@@ -50,6 +51,9 @@ export default async function AgregadoDashboard() {
       .eq('status', 'ativa')
       .order('created_at', { ascending: false })
       .limit(3),
+    supabase.from('documentos')
+      .select('id, tipo, status, data_validade')
+      .eq('agregado_id', user.id),
   ])
 
   // KPIs
@@ -71,6 +75,21 @@ export default async function AgregadoDashboard() {
     (veiculosCount ?? 0) > 0,
   ]
   const profilePct = Math.round(checks.filter(Boolean).length / checks.length * 100)
+
+  // Compliance: document alerts
+  const todayMs = Date.now()
+  const docsVencidos = (documentos ?? []).filter(d => {
+    if (!d.data_validade) return false
+    return new Date(d.data_validade).getTime() < todayMs
+  }).length
+  const docsVencendo = (documentos ?? []).filter(d => {
+    if (!d.data_validade) return false
+    const diff = new Date(d.data_validade).getTime() - todayMs
+    const dias = Math.ceil(diff / (1000 * 60 * 60 * 24))
+    return dias >= 0 && dias <= 30
+  }).length
+  const hasMissingCritical = !documentos?.some(d => d.tipo === 'cnh') ||
+    !documentos?.some(d => d.tipo === 'rntrc')
 
   const primeiroNome = profile?.nome?.split(' ')[0] || 'Agregado'
 
@@ -192,12 +211,53 @@ export default async function AgregadoDashboard() {
             </div>
           </Link>
         )}
-        {(paraAssinar?.length ?? 0) === 0 && profilePct === 100 && (
+        {/* Compliance: documentos vencidos ou vencendo */}
+        {docsVencidos > 0 && (
+          <Link href="/agregado/documentos">
+            <div className="bg-danger-light border border-danger/20 rounded-xl p-3 mb-2.5 flex items-center gap-3">
+              <ShieldAlert size={18} className="text-danger flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-[13px] font-medium text-danger">
+                  {docsVencidos} documento{docsVencidos > 1 ? 's' : ''} vencido{docsVencidos > 1 ? 's' : ''}
+                </p>
+                <p className="text-[11px] text-text-secondary mt-0.5">Renove para continuar habilitado nas vagas</p>
+              </div>
+              <ChevronRight size={14} className="text-text-muted flex-shrink-0" />
+            </div>
+          </Link>
+        )}
+        {docsVencendo > 0 && (
+          <Link href="/agregado/documentos">
+            <div className="bg-warning-light border border-warning/25 rounded-xl p-3 mb-2.5 flex items-center gap-3">
+              <AlertTriangle size={18} className="text-warning flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-[13px] font-medium text-warning">
+                  {docsVencendo} documento{docsVencendo > 1 ? 's' : ''} vence{docsVencendo > 1 ? 'm' : ''} em breve
+                </p>
+                <p className="text-[11px] text-text-secondary mt-0.5">Renove com antecedência para evitar interrupções</p>
+              </div>
+              <ChevronRight size={14} className="text-text-muted flex-shrink-0" />
+            </div>
+          </Link>
+        )}
+        {hasMissingCritical && (
+          <Link href="/agregado/documentos">
+            <div className="bg-info-light border border-info/20 rounded-xl p-3 mb-2.5 flex items-center gap-3">
+              <FileText size={18} className="text-info flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-[13px] font-medium text-info">Documentos obrigatórios ausentes</p>
+                <p className="text-[11px] text-text-secondary mt-0.5">Envie CNH e RNTRC para se candidatar a vagas</p>
+              </div>
+              <ChevronRight size={14} className="text-text-muted flex-shrink-0" />
+            </div>
+          </Link>
+        )}
+        {(paraAssinar?.length ?? 0) === 0 && profilePct === 100 && docsVencidos === 0 && docsVencendo === 0 && !hasMissingCritical && (
           <div className="bg-success-light border border-success/20 rounded-xl p-3 mb-2.5 flex items-center gap-3">
             <CheckCircle2 size={18} className="text-success flex-shrink-0" />
             <div className="flex-1">
               <p className="text-[13px] font-medium text-success">Tudo em ordem</p>
-              <p className="text-[11px] text-text-secondary mt-0.5">Seu perfil está completo e pronto para novas oportunidades</p>
+              <p className="text-[11px] text-text-secondary mt-0.5">Perfil completo, documentos em dia e pronto para novas oportunidades</p>
             </div>
           </div>
         )}

@@ -105,9 +105,15 @@ export default function BuscarMotoristasPage() {
 
   async function sendInteresse(agregadoId: string) {
     setSendLoading(agregadoId)
-    // In production: insert a notification or candidatura_interesse record
-    // For now simulate a delay
-    await new Promise(r => setTimeout(r, 800))
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await supabase.from('interesses').insert({
+        transportadora_id: user.id,
+        agregado_id: agregadoId,
+        mensagem: 'Temos interesse em trabalhar com você. Entre em contato conosco.',
+      })
+    }
     setSentIds(prev => new Set([...prev, agregadoId]))
     setSendLoading(null)
   }
