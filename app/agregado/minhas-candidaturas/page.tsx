@@ -33,7 +33,7 @@ interface Interesse {
   vagas: { rota_origem: string | null; rota_destino: string | null; valor_contrato: number | null } | null
 }
 
-const statusConfig: Record<string, { label: string; variant: 'warning' | 'success' | 'danger' | 'info' | 'default'; icon: React.ElementType }> = {
+const statusConfig: Record<string, { label: string; variant: 'warning' | 'success' | 'danger' | 'info' | 'muted'; icon: React.ElementType }> = {
   pendente:         { label: 'Em análise',     variant: 'warning',  icon: Clock },
   visualizado:      { label: 'Visualizado',    variant: 'info',     icon: Clock },
   em_negociacao:    { label: 'Em negociação',  variant: 'info',     icon: Clock },
@@ -42,7 +42,7 @@ const statusConfig: Record<string, { label: string; variant: 'warning' | 'succes
   recusado:         { label: 'Recusado',       variant: 'danger',   icon: XCircle },
 }
 
-const interesseStatusConfig: Record<string, { label: string; variant: 'warning' | 'success' | 'danger' | 'info' | 'default' }> = {
+const interesseStatusConfig: Record<string, { label: string; variant: 'warning' | 'success' | 'danger' | 'info' | 'muted' }> = {
   pendente:   { label: 'Novo convite',  variant: 'warning' },
   visualizado:{ label: 'Visualizado',  variant: 'info' },
   aceito:     { label: 'Aceito',       variant: 'success' },
