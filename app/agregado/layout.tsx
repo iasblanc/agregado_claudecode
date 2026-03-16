@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
   LayoutDashboard, Calculator, Search, FileText, Star,
-  TrendingUp, BookUser, LogOut, Bell, MoreHorizontal, X,
+  TrendingUp, BookUser, LogOut, Bell, MoreHorizontal, X, UserCircle,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 
@@ -21,6 +21,7 @@ const secondaryNav = [
   { href: '/agregado/cadastros',    icon: BookUser,        label: 'Frota e Cadastros' },
   { href: '/agregado/avaliacoes',   icon: Star,            label: 'Avaliações' },
   { href: '/agregado/minhas-candidaturas', icon: Search,   label: 'Minhas Candidaturas' },
+  { href: '/agregado/perfil',       icon: UserCircle,      label: 'Meu Perfil' },
 ]
 
 // Bottom nav mobile: 4 principais + "Mais" drawer

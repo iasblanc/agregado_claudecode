@@ -8,13 +8,24 @@ import {
   type Vaga,
 } from '@/lib/types'
 import {
-  CheckCircle2, X, ChevronRight, FileSignature,
-  Calendar, MapPin, Truck, DollarSign,
+  CheckCircle2, X, ChevronDown, FileSignature,
+  Calendar, Truck, DollarSign, Send, MessageSquare,
+  Info,
 } from 'lucide-react'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
-interface VagaJoined extends Pick<Vaga, 'valor_km' | 'km_estimado' | 'frequencia_tipo' | 'forma_pagamento' | 'rota_origem' | 'rota_destino' | 'uf_origem' | 'uf_destino' | 'tipo_veiculo' | 'tipo_equipamento' | 'inicio_previsto' | 'periodo_meses' | 'valor_contrato'> {
+interface Mensagem {
+  de: 'transportadora' | 'motorista'
+  texto: string
+  hora: string
+}
+
+interface VagaJoined extends Pick<Vaga,
+  'valor_km' | 'km_estimado' | 'frequencia_tipo' | 'forma_pagamento' |
+  'rota_origem' | 'rota_destino' | 'uf_origem' | 'uf_destino' |
+  'tipo_veiculo' | 'tipo_equipamento' | 'inicio_previsto' | 'periodo_meses' | 'valor_contrato'
+> {
   transportadora: { razao_social: string | null } | null
 }
 
@@ -30,6 +41,8 @@ interface ContratoAtivo {
   status: 'ativo' | 'suspenso' | 'encerrado'
   data_inicio: string | null
   data_fim_prevista: string | null
+  mensagens: Mensagem[]
+  observacoes: string | null
   created_at: string
   vaga: VagaJoined | null
 }
@@ -41,7 +54,7 @@ function fmtDate(iso: string | null | undefined): string {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-function rota(vaga: VagaJoined | null): string {
+function rotaStr(vaga: VagaJoined | null): string {
   if (!vaga) return '—'
   const orig = [vaga.rota_origem, vaga.uf_origem].filter(Boolean).join('/')
   const dest = [vaga.rota_destino, vaga.uf_destino].filter(Boolean).join('/')
@@ -49,7 +62,7 @@ function rota(vaga: VagaJoined | null): string {
   return `${orig || '?'} → ${dest || '?'}`
 }
 
-// ── Stepper ───────────────────────────────────────────────────────────────────
+// ── Stepper (modal de assinatura) ─────────────────────────────────────────────
 
 function Stepper({ step }: { step: number }) {
   const steps = ['Proposta', 'Termos', 'Assinatura', 'Concluído']
@@ -100,7 +113,6 @@ function SignModal({ candidatura, onClose, onSigned }: SignModalProps) {
   const vaga = candidatura.vaga
   const estimativa = vaga ? calcEstimativaMensal(vaga) : null
 
-  // Canvas helpers
   function getPos(e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) {
     const rect = canvas.getBoundingClientRect()
     if ('touches' in e) {
@@ -151,9 +163,7 @@ function SignModal({ candidatura, onClose, onSigned }: SignModalProps) {
     setSigning(true)
     try {
       const supabase = createClient()
-      // Atualiza candidatura para contratado
       await supabase.from('candidaturas').update({ status: 'contratado' }).eq('id', candidatura.id)
-      // Ativa o contrato gerado na aprovação
       await supabase
         .from('contratos_motorista')
         .update({ status: 'ativo', data_inicio: new Date().toISOString().split('T')[0] })
@@ -172,12 +182,9 @@ function SignModal({ candidatura, onClose, onSigned }: SignModalProps) {
     <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative bg-bg rounded-t-2xl max-h-[92vh] overflow-y-auto shadow-modal">
-        {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 rounded-full bg-border" />
         </div>
-
-        {/* Header */}
         <div className="px-5 pb-3 flex items-center justify-between border-b border-border">
           <h2 className="font-serif text-lg font-medium text-text-primary">
             {step < 4 ? 'Assinar proposta' : 'Proposta assinada'}
@@ -192,13 +199,12 @@ function SignModal({ candidatura, onClose, onSigned }: SignModalProps) {
         <div className="px-5 py-4">
           <Stepper step={step} />
 
-          {/* Etapa 1 — Preview da proposta */}
           {step === 1 && (
             <div>
               <p className="text-[9px] uppercase tracking-[.16em] text-text-muted font-sans mb-2">
                 {(vaga?.transportadora as { razao_social: string | null } | null)?.razao_social?.toUpperCase() ?? 'TRANSPORTADORA'}
               </p>
-              <h3 className="font-serif text-xl font-medium text-text-primary mb-4">{rota(vaga)}</h3>
+              <h3 className="font-serif text-xl font-medium text-text-primary mb-4">{rotaStr(vaga)}</h3>
               <div className="grid grid-cols-2 gap-2 mb-5">
                 {[
                   { label: 'Remuneração', value: vaga?.valor_km ? `${formatCurrency(vaga.valor_km)}/km` : '—' },
@@ -215,110 +221,64 @@ function SignModal({ candidatura, onClose, onSigned }: SignModalProps) {
                 ))}
               </div>
               <div className="bg-info-light border border-info/20 rounded-lg p-3 text-xs text-text-secondary mb-4">
-                <strong className="text-info">Atenção:</strong> Leia atentamente os termos antes de assinar. Esta proposta foi enviada pela transportadora e aguarda apenas sua assinatura digital.
+                <strong className="text-info">Atenção:</strong> Leia atentamente os termos antes de assinar.
               </div>
-              <button
-                onClick={() => setStep(2)}
-                className="w-full bg-accent text-bg py-3 rounded-pill text-xs font-medium uppercase tracking-[.1em] font-sans">
+              <button onClick={() => setStep(2)} className="w-full bg-accent text-bg py-3 rounded-pill text-xs font-medium uppercase tracking-[.1em] font-sans">
                 Revisar termos →
               </button>
             </div>
           )}
 
-          {/* Etapa 2 — Termos */}
           {step === 2 && (
             <div>
               <div className="bg-surface border border-border rounded-xl p-4 h-48 overflow-y-auto text-xs text-text-secondary leading-relaxed mb-4">
                 <p className="font-semibold text-text-primary mb-2">CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE TRANSPORTE</p>
-                <p className="mb-2">Pelo presente instrumento, as partes acima identificadas — doravante denominadas <strong>CONTRATANTE</strong> (transportadora) e <strong>CONTRATADO</strong> (agregado) — celebram o presente contrato de prestação de serviços de transporte rodoviário de cargas, nos termos da legislação vigente (Lei 11.442/2007 e Resolução ANTT 5.564/2020).</p>
-                <p className="mb-2"><strong>Cláusula 1ª — OBJETO.</strong> O CONTRATADO se compromete a prestar serviços de transporte de cargas na rota estipulada, utilizando veículo próprio regularizado junto ao RNTRC/ANTT, durante o período de vigência estabelecido.</p>
-                <p className="mb-2"><strong>Cláusula 2ª — REMUNERAÇÃO.</strong> O CONTRATANTE pagará ao CONTRATADO o valor estipulado na proposta por km rodado na rota, na periodicidade e forma de pagamento acordados.</p>
-                <p className="mb-2"><strong>Cláusula 3ª — OBRIGAÇÕES DO CONTRATADO.</strong> Manter o veículo em perfeitas condições de tráfego; possuir toda documentação exigida; comunicar qualquer imprevisto; cumprir os prazos de coleta e entrega.</p>
-                <p className="mb-2"><strong>Cláusula 4ª — RESCISÃO.</strong> Este contrato poderá ser rescindido por qualquer das partes, mediante aviso prévio de 15 (quinze) dias, sem ônus para nenhuma das partes, salvo em caso de inadimplência ou descumprimento das obrigações.</p>
-                <p><strong>Cláusula 5ª — FORO.</strong> As partes elegem o foro da comarca da sede da CONTRATANTE para dirimir quaisquer dúvidas oriundas do presente instrumento.</p>
+                <p className="mb-2">Pelo presente instrumento, as partes identificadas — denominadas <strong>CONTRATANTE</strong> (transportadora) e <strong>CONTRATADO</strong> (agregado) — celebram o presente contrato nos termos da Lei 11.442/2007 e Resolução ANTT 5.564/2020.</p>
+                <p className="mb-2"><strong>Cláusula 1ª — OBJETO.</strong> O CONTRATADO se compromete a prestar serviços de transporte de cargas na rota estipulada, com veículo regularizado junto ao RNTRC/ANTT.</p>
+                <p className="mb-2"><strong>Cláusula 2ª — REMUNERAÇÃO.</strong> O CONTRATANTE pagará o valor por km acordado, na periodicidade e forma de pagamento estabelecidos.</p>
+                <p className="mb-2"><strong>Cláusula 3ª — OBRIGAÇÕES DO CONTRATADO.</strong> Manter veículo em condições de tráfego; documentação atualizada; comunicar imprevistos; cumprir prazos.</p>
+                <p className="mb-2"><strong>Cláusula 4ª — RESCISÃO.</strong> Rescisão por qualquer parte com aviso prévio de 15 dias, sem ônus, salvo inadimplência.</p>
+                <p><strong>Cláusula 5ª — FORO.</strong> Comarca da sede da CONTRATANTE.</p>
               </div>
               <label className="flex items-start gap-3 mb-4 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={termsChecked}
-                  onChange={e => setTermsChecked(e.target.checked)}
-                  className="mt-0.5 accent-[#2D2B26]"
-                />
-                <span className="text-xs text-text-secondary">Li e concordo com os termos e condições do contrato acima</span>
+                <input type="checkbox" checked={termsChecked} onChange={e => setTermsChecked(e.target.checked)} className="mt-0.5 accent-[#2D2B26]" />
+                <span className="text-xs text-text-secondary">Li e concordo com os termos e condições do contrato</span>
               </label>
               <div className="flex gap-2">
-                <button
-                  onClick={() => setStep(1)}
-                  className="flex-1 border border-border text-text-primary py-3 rounded-pill text-xs font-medium uppercase tracking-[.1em] font-sans">
-                  ← Voltar
-                </button>
-                <button
-                  disabled={!termsChecked}
-                  onClick={() => setStep(3)}
-                  className="flex-[2] bg-accent text-bg py-3 rounded-pill text-xs font-medium uppercase tracking-[.1em] font-sans disabled:opacity-40">
-                  Ir para assinatura →
-                </button>
+                <button onClick={() => setStep(1)} className="flex-1 border border-border text-text-primary py-3 rounded-pill text-xs font-medium uppercase tracking-[.1em] font-sans">← Voltar</button>
+                <button disabled={!termsChecked} onClick={() => setStep(3)} className="flex-[2] bg-accent text-bg py-3 rounded-pill text-xs font-medium uppercase tracking-[.1em] font-sans disabled:opacity-40">Ir para assinatura →</button>
               </div>
             </div>
           )}
 
-          {/* Etapa 3 — Assinatura */}
           {step === 3 && (
             <div>
-              <p className="text-xs text-text-secondary mb-3">Assine com o dedo ou mouse no espaço abaixo, e confirme seus dados pessoais.</p>
+              <p className="text-xs text-text-secondary mb-3">Assine com o dedo ou mouse e confirme seus dados.</p>
               <div className="border-2 border-dashed border-border rounded-xl overflow-hidden mb-2 relative bg-[#FAF8F4]">
                 {!hasSig && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <span className="text-text-muted text-sm font-sans">✍️ Assine aqui</span>
                   </div>
                 )}
-                <canvas
-                  ref={canvasRef}
-                  width={340}
-                  height={120}
-                  className="w-full touch-none"
-                  onMouseDown={startDraw}
-                  onMouseMove={draw}
-                  onMouseUp={stopDraw}
-                  onMouseLeave={stopDraw}
-                  onTouchStart={startDraw}
-                  onTouchMove={draw}
-                  onTouchEnd={stopDraw}
-                />
+                <canvas ref={canvasRef} width={340} height={120} className="w-full touch-none"
+                  onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw}
+                  onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw} />
               </div>
               <button onClick={clearSig} className="text-xs text-text-muted font-sans mb-4">↺ Limpar assinatura</button>
               <div className="grid grid-cols-1 gap-3 mb-4">
-                <Input
-                  label="Nome completo (conforme CNH)"
-                  value={nome}
-                  onChange={e => setNome(e.target.value)}
-                  placeholder="Ex: Carlos Eduardo Machado"
-                />
-                <Input
-                  label="CPF"
-                  value={cpf}
-                  onChange={e => setCpf(e.target.value)}
-                  placeholder="000.000.000-00"
-                />
+                <Input label="Nome completo (conforme CNH)" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Carlos Eduardo Machado" />
+                <Input label="CPF" value={cpf} onChange={e => setCpf(e.target.value)} placeholder="000.000.000-00" />
               </div>
-              <p className="text-[10px] text-text-muted mb-4">🔒 Sua assinatura, IP e timestamp são registrados para fins legais.</p>
+              <p className="text-[10px] text-text-muted mb-4">🔒 Assinatura, IP e timestamp registrados para fins legais.</p>
               <div className="flex gap-2">
-                <button
-                  onClick={() => setStep(2)}
-                  className="flex-1 border border-border text-text-primary py-3 rounded-pill text-xs font-medium uppercase tracking-[.1em] font-sans">
-                  ← Voltar
-                </button>
-                <button
-                  disabled={!canAdvance3 || signing}
-                  onClick={handleConfirm}
-                  className="flex-[2] bg-accent text-bg py-3 rounded-pill text-xs font-medium uppercase tracking-[.1em] font-sans disabled:opacity-40">
+                <button onClick={() => setStep(2)} className="flex-1 border border-border text-text-primary py-3 rounded-pill text-xs font-medium uppercase tracking-[.1em] font-sans">← Voltar</button>
+                <button disabled={!canAdvance3 || signing} onClick={handleConfirm} className="flex-[2] bg-accent text-bg py-3 rounded-pill text-xs font-medium uppercase tracking-[.1em] font-sans disabled:opacity-40">
                   {signing ? 'Assinando...' : 'Assinar e confirmar →'}
                 </button>
               </div>
             </div>
           )}
 
-          {/* Etapa 4 — Sucesso */}
           {step === 4 && (
             <div className="text-center py-4">
               <div className="w-16 h-16 rounded-full bg-success-light flex items-center justify-center mx-auto mb-4">
@@ -326,12 +286,9 @@ function SignModal({ candidatura, onClose, onSigned }: SignModalProps) {
               </div>
               <h3 className="font-serif text-xl font-medium text-text-primary mb-2">Proposta assinada!</h3>
               <p className="text-sm text-text-secondary mb-6">
-                Seu contrato com <strong>{(vaga?.transportadora as { razao_social: string | null } | null)?.razao_social}</strong> foi formalizado com sucesso.
-                A transportadora receberá uma notificação.
+                Seu contrato com <strong>{(vaga?.transportadora as { razao_social: string | null } | null)?.razao_social}</strong> foi formalizado.
               </p>
-              <button
-                onClick={onClose}
-                className="w-full bg-accent text-bg py-3 rounded-pill text-xs font-medium uppercase tracking-[.1em] font-sans">
+              <button onClick={onClose} className="w-full bg-accent text-bg py-3 rounded-pill text-xs font-medium uppercase tracking-[.1em] font-sans">
                 Ver meus contratos
               </button>
             </div>
@@ -342,29 +299,196 @@ function SignModal({ candidatura, onClose, onSigned }: SignModalProps) {
   )
 }
 
-// ── Contrato Card ─────────────────────────────────────────────────────────────
+// ── Painel expandido de contrato ativo ────────────────────────────────────────
 
-function ContratoCard({
-  item,
-  tipo,
-  onAssinar,
+function ContratoExpandido({
+  contrato,
+  userId,
+  onChange,
 }: {
-  item: CandidaturaParaAssinar | ContratoAtivo
-  tipo: 'assinar' | 'ativo' | 'encerrado'
-  onAssinar?: (c: CandidaturaParaAssinar) => void
+  contrato: ContratoAtivo
+  userId: string
+  onChange: (c: ContratoAtivo) => void
 }) {
-  const vaga = item.vaga
+  const [activeTab, setActiveTab] = useState<'detalhes' | 'mensagens'>('detalhes')
+  const [msgInput, setMsgInput] = useState('')
+  const [saving, setSaving] = useState(false)
+  const msgEndRef = useRef<HTMLDivElement>(null)
+  const vaga = contrato.vaga
+  const nomeTransp = (vaga?.transportadora as { razao_social: string | null } | null)?.razao_social ?? 'Transportadora'
   const estimativa = vaga ? calcEstimativaMensal(vaga) : null
-  const barColor = tipo === 'ativo' ? 'bg-success' : tipo === 'assinar' ? 'bg-warning' : 'bg-border'
+
+  useEffect(() => {
+    msgEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [contrato.mensagens])
+
+  async function sendMsg() {
+    const texto = msgInput.trim()
+    if (!texto) return
+    const now = new Date()
+    const hora = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+    const novaMensagem: Mensagem = { de: 'motorista', texto, hora: `Agora, ${hora}` }
+    const novasMensagens = [...(contrato.mensagens ?? []), novaMensagem]
+
+    setSaving(true)
+    const supabase = createClient()
+    await supabase.from('contratos_motorista').update({ mensagens: novasMensagens }).eq('id', contrato.id)
+    onChange({ ...contrato, mensagens: novasMensagens })
+    setMsgInput('')
+    setSaving(false)
+  }
+
+  const tabs = [
+    { key: 'detalhes' as const, label: 'Detalhes', icon: Info },
+    {
+      key: 'mensagens' as const,
+      label: 'Mensagens',
+      icon: MessageSquare,
+      count: contrato.mensagens?.length ?? 0,
+    },
+  ]
 
   return (
-    <div className="border border-border rounded-2xl overflow-hidden mb-3 shadow-card">
+    <div className="border-t border-border">
+      {/* Sub-tabs */}
+      <div className="flex border-b border-border overflow-x-auto">
+        {tabs.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setActiveTab(t.key)}
+            className={`px-4 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-1.5 ${
+              activeTab === t.key ? 'border-accent text-text-primary' : 'border-transparent text-text-muted hover:text-text-secondary'
+            }`}
+          >
+            <t.icon size={12} />
+            {t.label}
+            {'count' in t && t.count > 0 && (
+              <span className="bg-[#E0DAD0] text-text-secondary text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                {t.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      <div className="p-4">
+        {/* DETALHES */}
+        {activeTab === 'detalhes' && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { l: 'Transportadora', v: nomeTransp },
+                { l: 'Remuneração', v: vaga?.valor_km ? `${formatCurrency(vaga.valor_km)}/km` : '—' },
+                { l: 'Estimativa/mês', v: estimativa ? formatCurrency(estimativa) : '—' },
+                { l: 'Distância/viagem', v: vaga?.km_estimado ? `${vaga.km_estimado} km` : '—' },
+                { l: 'Início', v: fmtDate(contrato.data_inicio) },
+                { l: 'Previsão término', v: fmtDate(contrato.data_fim_prevista) },
+                { l: 'Pagamento', v: vaga?.forma_pagamento ?? '—' },
+                { l: 'Frequência', v: vaga ? labelFrequencia(vaga) : '—' },
+              ].map(item => (
+                <div key={item.l} className="bg-bg rounded-lg p-2.5">
+                  <p className="text-[10px] uppercase tracking-wide text-text-muted">{item.l}</p>
+                  <p className="text-sm font-medium text-text-primary mt-0.5 leading-snug">{item.v}</p>
+                </div>
+              ))}
+            </div>
+            {contrato.observacoes && (
+              <div className="bg-bg rounded-lg p-2.5">
+                <p className="text-[10px] uppercase tracking-wide text-text-muted mb-1">Observações</p>
+                <p className="text-sm text-text-secondary">{contrato.observacoes}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MENSAGENS */}
+        {activeTab === 'mensagens' && (
+          <div className="space-y-3">
+            <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+              {(contrato.mensagens ?? []).length === 0 ? (
+                <p className="text-sm text-text-muted text-center py-8">Nenhuma mensagem ainda.<br /><span className="text-xs">Envie uma mensagem para a transportadora.</span></p>
+              ) : (
+                <>
+                  {contrato.mensagens.map((m, i) => (
+                    <div
+                      key={i}
+                      className={`flex flex-col max-w-[82%] ${m.de === 'motorista' ? 'ml-auto items-end' : 'items-start'}`}
+                    >
+                      <div className={`rounded-xl px-3 py-2 text-sm leading-snug ${
+                        m.de === 'motorista'
+                          ? 'bg-accent text-bg'
+                          : 'bg-[#E8E3D8] text-text-primary'
+                      }`}>
+                        {m.texto}
+                      </div>
+                      <p className="text-[10px] text-text-muted mt-0.5">
+                        {m.de === 'motorista' ? 'Você' : nomeTransp.split(' ')[0]} · {m.hora}
+                      </p>
+                    </div>
+                  ))}
+                  <div ref={msgEndRef} />
+                </>
+              )}
+            </div>
+            <div className="flex gap-2 border-t border-border pt-3">
+              <textarea
+                value={msgInput}
+                onChange={e => setMsgInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg() } }}
+                placeholder="Escreva uma mensagem para a transportadora..."
+                rows={1}
+                className="flex-1 bg-bg border border-border rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-accent/50"
+              />
+              <button
+                onClick={sendMsg}
+                disabled={saving || !msgInput.trim()}
+                className="w-9 h-9 rounded-full bg-accent text-bg flex items-center justify-center hover:opacity-90 disabled:opacity-40 transition-opacity flex-shrink-0"
+              >
+                <Send size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Card de Contrato Ativo/Encerrado ──────────────────────────────────────────
+
+function ContratoAtivoCard({
+  contrato,
+  userId,
+  onChange,
+}: {
+  contrato: ContratoAtivo
+  userId: string
+  onChange: (c: ContratoAtivo) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const vaga = contrato.vaga
+  const nomeTransp = (vaga?.transportadora as { razao_social: string | null } | null)?.razao_social ?? 'Transportadora'
+  const estimativa = vaga ? calcEstimativaMensal(vaga) : null
+  const novasMsg = contrato.mensagens?.filter(m => m.de === 'transportadora').length ?? 0
+
+  const barColor = contrato.status === 'ativo' ? 'bg-success' : contrato.status === 'suspenso' ? 'bg-warning' : 'bg-border'
+
+  return (
+    <div className="border border-border rounded-2xl overflow-hidden shadow-card">
       <div className={`h-[3px] w-full ${barColor}`} />
       <div className="p-4">
-        <p className="text-[10px] uppercase tracking-[.1em] text-text-muted font-sans mb-1">
-          {(vaga?.transportadora as { razao_social: string | null } | null)?.razao_social ?? 'Transportadora'}
-        </p>
-        <h3 className="font-serif text-[19px] font-medium text-text-primary mb-3">{rota(vaga)}</h3>
+        <div className="flex items-start gap-3 mb-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] uppercase tracking-[.1em] text-text-muted font-sans mb-0.5">{nomeTransp}</p>
+            <h3 className="font-serif text-[18px] font-medium text-text-primary leading-tight">{rotaStr(vaga)}</h3>
+          </div>
+          <div className="flex-shrink-0 flex items-center gap-2">
+            {contrato.status === 'ativo' && <Badge variant="success">Ativo</Badge>}
+            {contrato.status === 'suspenso' && <Badge variant="warning">Suspenso</Badge>}
+            {contrato.status === 'encerrado' && <Badge variant="muted">Encerrado</Badge>}
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="bg-surface rounded-lg p-2.5">
             <p className="text-[9px] uppercase tracking-[.1em] text-text-muted font-sans mb-1">Remuneração</p>
@@ -375,44 +499,87 @@ function ContratoCard({
             <p className="font-serif text-base font-medium text-text-primary">{estimativa ? formatCurrency(estimativa) : '—'}</p>
           </div>
           <div className="bg-surface rounded-lg p-2.5">
-            <p className="text-[9px] uppercase tracking-[.1em] text-text-muted font-sans mb-1">
-              {tipo === 'assinar' ? 'Candidatura em' : 'Início'}
-            </p>
-            <p className="text-sm font-medium text-text-primary">
-              {tipo === 'assinar' ? fmtDate(item.created_at) : fmtDate((item as ContratoAtivo).data_inicio)}
-            </p>
+            <p className="text-[9px] uppercase tracking-[.1em] text-text-muted font-sans mb-1">Início</p>
+            <p className="text-sm font-medium text-text-primary">{fmtDate(contrato.data_inicio)}</p>
           </div>
           <div className="bg-surface rounded-lg p-2.5">
-            <p className="text-[9px] uppercase tracking-[.1em] text-text-muted font-sans mb-1">
-              {tipo === 'assinar' ? 'Pagamento' : 'Previsão término'}
-            </p>
-            <p className="text-sm font-medium text-text-primary">
-              {tipo === 'assinar'
-                ? (vaga?.forma_pagamento ?? '—')
-                : fmtDate((item as ContratoAtivo).data_fim_prevista)}
-            </p>
+            <p className="text-[9px] uppercase tracking-[.1em] text-text-muted font-sans mb-1">Previsão término</p>
+            <p className="text-sm font-medium text-text-primary">{fmtDate(contrato.data_fim_prevista)}</p>
           </div>
+        </div>
+
+        {vaga?.frequencia_tipo && (
+          <p className="text-xs text-text-muted mb-3">{labelFrequencia(vaga)}</p>
+        )}
+
+        {/* Botão expandir */}
+        <button
+          onClick={() => setExpanded(v => !v)}
+          className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-border bg-bg hover:bg-surface transition-colors text-xs font-medium text-text-secondary"
+        >
+          <span className="flex items-center gap-1.5">
+            <MessageSquare size={12} />
+            Detalhes e mensagens
+            {novasMsg > 0 && (
+              <span className="bg-warning text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                {novasMsg}
+              </span>
+            )}
+          </span>
+          <ChevronDown size={14} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        </button>
+      </div>
+
+      {expanded && (
+        <ContratoExpandido contrato={contrato} userId={userId} onChange={onChange} />
+      )}
+    </div>
+  )
+}
+
+// ── Card Para Assinar ─────────────────────────────────────────────────────────
+
+function CardParaAssinar({
+  item,
+  onAssinar,
+}: {
+  item: CandidaturaParaAssinar
+  onAssinar: (c: CandidaturaParaAssinar) => void
+}) {
+  const vaga = item.vaga
+  const estimativa = vaga ? calcEstimativaMensal(vaga) : null
+
+  return (
+    <div className="border border-warning/30 rounded-2xl overflow-hidden shadow-card">
+      <div className="h-[3px] w-full bg-warning" />
+      <div className="p-4">
+        <p className="text-[10px] uppercase tracking-[.1em] text-text-muted font-sans mb-1">
+          {(vaga?.transportadora as { razao_social: string | null } | null)?.razao_social ?? 'Transportadora'}
+        </p>
+        <h3 className="font-serif text-[19px] font-medium text-text-primary mb-3">{rotaStr(vaga)}</h3>
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {[
+            { label: 'Remuneração', value: vaga?.valor_km ? `${formatCurrency(vaga.valor_km)}/km` : '—' },
+            { label: 'Estimativa/mês', value: estimativa ? formatCurrency(estimativa) : '—' },
+            { label: 'Candidatura em', value: fmtDate(item.created_at) },
+            { label: 'Pagamento', value: vaga?.forma_pagamento ?? '—' },
+          ].map(({ label, value }) => (
+            <div key={label} className="bg-surface rounded-lg p-2.5">
+              <p className="text-[9px] uppercase tracking-[.1em] text-text-muted font-sans mb-1">{label}</p>
+              <p className="text-sm font-medium text-text-primary">{value}</p>
+            </div>
+          ))}
         </div>
         {vaga?.frequencia_tipo && (
           <p className="text-xs text-text-muted mb-3">{labelFrequencia(vaga)}</p>
         )}
-        {tipo === 'assinar' && (
-          <button
-            onClick={() => onAssinar?.(item as CandidaturaParaAssinar)}
-            className="w-full bg-accent text-bg py-3 rounded-pill text-xs font-medium uppercase tracking-[.1em] font-sans flex items-center justify-center gap-2">
-            <FileSignature size={14} />
-            Revisar e assinar →
-          </button>
-        )}
-        {tipo === 'ativo' && (
-          <div className="flex gap-2">
-            <Badge variant="success">Ativo</Badge>
-            <span className="text-xs text-text-muted self-center">· em operação</span>
-          </div>
-        )}
-        {tipo === 'encerrado' && (
-          <Badge variant="muted">Encerrado</Badge>
-        )}
+        <button
+          onClick={() => onAssinar(item)}
+          className="w-full bg-accent text-bg py-3 rounded-pill text-xs font-medium uppercase tracking-[.1em] font-sans flex items-center justify-center gap-2"
+        >
+          <FileSignature size={14} />
+          Revisar e assinar →
+        </button>
       </div>
     </div>
   )
@@ -427,47 +594,53 @@ export default function ContratosPage() {
   const [encerrados, setEncerrados] = useState<ContratoAtivo[]>([])
   const [loading, setLoading] = useState(true)
   const [signTarget, setSignTarget] = useState<CandidaturaParaAssinar | null>(null)
+  const [userId, setUserId] = useState('')
 
-  useEffect(() => {
+  const loadData = useCallback(async () => {
+    setLoading(true)
     const supabase = createClient()
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    setUserId(user.id)
 
-      const vagaSelect = 'valor_km, km_estimado, frequencia_tipo, forma_pagamento, rota_origem, rota_destino, uf_origem, uf_destino, tipo_veiculo, tipo_equipamento, inicio_previsto, periodo_meses, valor_contrato, transportadora:transportadoras(razao_social)'
+    const vagaSelect = 'valor_km, km_estimado, frequencia_tipo, forma_pagamento, rota_origem, rota_destino, uf_origem, uf_destino, tipo_veiculo, tipo_equipamento, inicio_previsto, periodo_meses, valor_contrato, transportadora:transportadoras(razao_social)'
 
-      const [{ data: cands }, { data: ativs }, { data: encerrs }] = await Promise.all([
-        supabase.from('candidaturas')
-          .select(`id, status, created_at, vaga:vagas(${vagaSelect})`)
-          .eq('agregado_id', user.id)
-          .eq('status', 'em_formalizacao')
-          .order('created_at', { ascending: false }),
-        supabase.from('contratos_motorista')
-          .select(`id, status, data_inicio, data_fim_prevista, created_at, vaga:vagas(${vagaSelect})`)
-          .eq('agregado_id', user.id)
-          .eq('status', 'ativo')
-          .order('data_inicio', { ascending: false }),
-        supabase.from('contratos_motorista')
-          .select(`id, status, data_inicio, data_fim_prevista, created_at, vaga:vagas(${vagaSelect})`)
-          .eq('agregado_id', user.id)
-          .eq('status', 'encerrado')
-          .order('data_inicio', { ascending: false }),
-      ])
+    const [{ data: cands }, { data: ativs }, { data: encerrs }] = await Promise.all([
+      supabase.from('candidaturas')
+        .select(`id, status, created_at, vaga:vagas(${vagaSelect})`)
+        .eq('agregado_id', user.id)
+        .eq('status', 'em_formalizacao')
+        .order('created_at', { ascending: false }),
+      supabase.from('contratos_motorista')
+        .select(`id, status, data_inicio, data_fim_prevista, mensagens, observacoes, created_at, vaga:vagas(${vagaSelect})`)
+        .eq('agregado_id', user.id)
+        .in('status', ['ativo', 'suspenso'])
+        .order('data_inicio', { ascending: false }),
+      supabase.from('contratos_motorista')
+        .select(`id, status, data_inicio, data_fim_prevista, mensagens, observacoes, created_at, vaga:vagas(${vagaSelect})`)
+        .eq('agregado_id', user.id)
+        .eq('status', 'encerrado')
+        .order('data_inicio', { ascending: false }),
+    ])
 
-      setParaAssinar((cands ?? []) as unknown as CandidaturaParaAssinar[])
-      setAtivos((ativs ?? []) as unknown as ContratoAtivo[])
-      setEncerrados((encerrs ?? []) as unknown as ContratoAtivo[])
-      setLoading(false)
-    })
+    setParaAssinar((cands ?? []) as unknown as CandidaturaParaAssinar[])
+    setAtivos((ativs ?? []) as unknown as ContratoAtivo[])
+    setEncerrados((encerrs ?? []) as unknown as ContratoAtivo[])
+    setLoading(false)
   }, [])
+
+  useEffect(() => { loadData() }, [loadData])
 
   function handleSigned(id: string) {
     setParaAssinar(prev => prev.filter(c => c.id !== id))
+    // Reload to pick up the newly created active contract
+    setTimeout(loadData, 500)
   }
 
-  const tabs: { key: typeof tab; label: string; count?: number }[] = [
-    { key: 'assinar', label: 'Para assinar', count: paraAssinar.length },
-    { key: 'ativos', label: 'Ativos', count: ativos.length },
-    { key: 'encerrados', label: 'Encerrados' },
+  const tabs = [
+    { key: 'assinar' as const, label: 'Para assinar', count: paraAssinar.length },
+    { key: 'ativos' as const, label: 'Ativos', count: ativos.length },
+    { key: 'encerrados' as const, label: 'Encerrados' },
   ]
 
   if (loading) {
@@ -483,9 +656,7 @@ export default function ContratosPage() {
             <div className="p-4 space-y-2">
               <div className="h-3 bg-surface rounded w-24" />
               <div className="h-5 bg-surface rounded w-40" />
-              <div className="grid grid-cols-2 gap-2">
-                {[1, 2, 3, 4].map(j => <div key={j} className="h-12 bg-surface rounded-lg" />)}
-              </div>
+              <div className="grid grid-cols-2 gap-2">{[1,2,3,4].map(j => <div key={j} className="h-12 bg-surface rounded-lg" />)}</div>
             </div>
           </div>
         ))}
@@ -493,14 +664,9 @@ export default function ContratosPage() {
     )
   }
 
-  const currentItems =
-    tab === 'assinar' ? paraAssinar :
-    tab === 'ativos' ? ativos : encerrados
-
   return (
     <>
       <div className="px-4 py-5">
-        {/* Header */}
         <div className="mb-4">
           <p className="text-[9px] uppercase tracking-[.16em] text-text-muted font-sans mb-1">Meus contratos</p>
           <h1 className="font-serif text-2xl font-medium text-text-primary">Contratos</h1>
@@ -516,7 +682,7 @@ export default function ContratosPage() {
                 ${tab === t.key ? 'text-text-primary border-accent' : 'text-text-muted border-transparent'}`}
             >
               {t.label}
-              {t.count !== undefined && t.count > 0 && (
+              {'count' in t && t.count !== undefined && t.count > 0 && (
                 <span className="bg-warning text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
                   {t.count}
                 </span>
@@ -525,55 +691,80 @@ export default function ContratosPage() {
           ))}
         </div>
 
-        {/* Lista */}
-        {currentItems.length === 0 ? (
-          <div className="text-center py-14">
-            <div className="w-14 h-14 rounded-full bg-surface flex items-center justify-center mx-auto mb-3">
-              {tab === 'assinar' ? <FileSignature size={24} className="text-text-muted" /> :
-               tab === 'ativos' ? <Truck size={24} className="text-text-muted" /> :
-               <Calendar size={24} className="text-text-muted" />}
+        {/* Para assinar */}
+        {tab === 'assinar' && (
+          paraAssinar.length === 0 ? (
+            <div className="text-center py-14">
+              <div className="w-14 h-14 rounded-full bg-surface flex items-center justify-center mx-auto mb-3">
+                <FileSignature size={24} className="text-text-muted" />
+              </div>
+              <p className="text-sm font-medium text-text-primary">Nenhuma proposta pendente</p>
+              <p className="text-xs text-text-muted mt-1">Quando uma transportadora aprovar sua candidatura, a proposta aparecerá aqui.</p>
             </div>
-            <p className="text-sm font-medium text-text-primary">
-              {tab === 'assinar' ? 'Nenhuma proposta pendente' :
-               tab === 'ativos' ? 'Nenhum contrato ativo' :
-               'Nenhum contrato encerrado'}
-            </p>
-            <p className="text-xs text-text-muted mt-1">
-              {tab === 'assinar' ? 'Quando uma transportadora enviar uma proposta, ela aparecerá aqui.' :
-               tab === 'ativos' ? 'Seus contratos ativos aparecerão aqui.' :
-               'Contratos finalizados aparecerão aqui.'}
-            </p>
-          </div>
-        ) : (
-          currentItems.map(item =>
-            tab === 'assinar' ? (
-              <ContratoCard
-                key={item.id}
-                item={item}
-                tipo="assinar"
-                onAssinar={c => setSignTarget(c)}
-              />
-            ) : (
-              <ContratoCard key={item.id} item={item} tipo={tab === 'ativos' ? 'ativo' : 'encerrado'} />
-            )
+          ) : (
+            <div className="space-y-3">
+              {paraAssinar.map(c => (
+                <CardParaAssinar key={c.id} item={c} onAssinar={c => setSignTarget(c)} />
+              ))}
+            </div>
           )
         )}
 
-        {/* Info sobre candidaturas em andamento */}
-        {tab === 'ativos' && ativos.length === 0 && paraAssinar.length > 0 && (
-          <div className="bg-warning-light border border-warning/20 rounded-xl p-3 mt-2 flex items-center gap-3">
-            <DollarSign size={16} className="text-warning flex-shrink-0" />
-            <p className="text-xs text-text-secondary">
-              Você tem {paraAssinar.length} proposta(s) na aba &quot;Para assinar&quot;. Assine para ativar seus contratos.
-            </p>
-            <button onClick={() => setTab('assinar')} className="flex-shrink-0">
-              <ChevronRight size={14} className="text-text-muted" />
-            </button>
-          </div>
+        {/* Ativos */}
+        {tab === 'ativos' && (
+          ativos.length === 0 ? (
+            <div className="text-center py-14">
+              <div className="w-14 h-14 rounded-full bg-surface flex items-center justify-center mx-auto mb-3">
+                <Truck size={24} className="text-text-muted" />
+              </div>
+              <p className="text-sm font-medium text-text-primary">Nenhum contrato ativo</p>
+              <p className="text-xs text-text-muted mt-1">Seus contratos ativos aparecerão aqui.</p>
+              {paraAssinar.length > 0 && (
+                <div className="bg-warning-light border border-warning/20 rounded-xl p-3 mt-4 flex items-center gap-3">
+                  <DollarSign size={16} className="text-warning flex-shrink-0" />
+                  <p className="text-xs text-text-secondary text-left">Você tem {paraAssinar.length} proposta(s) aguardando assinatura.</p>
+                  <button onClick={() => setTab('assinar')} className="flex-shrink-0 text-xs font-medium text-accent">Ver →</button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {ativos.map(c => (
+                <ContratoAtivoCard
+                  key={c.id}
+                  contrato={c}
+                  userId={userId}
+                  onChange={updated => setAtivos(prev => prev.map(x => x.id === updated.id ? updated : x))}
+                />
+              ))}
+            </div>
+          )
+        )}
+
+        {/* Encerrados */}
+        {tab === 'encerrados' && (
+          encerrados.length === 0 ? (
+            <div className="text-center py-14">
+              <div className="w-14 h-14 rounded-full bg-surface flex items-center justify-center mx-auto mb-3">
+                <Calendar size={24} className="text-text-muted" />
+              </div>
+              <p className="text-sm font-medium text-text-primary">Nenhum contrato encerrado</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {encerrados.map(c => (
+                <ContratoAtivoCard
+                  key={c.id}
+                  contrato={c}
+                  userId={userId}
+                  onChange={updated => setEncerrados(prev => prev.map(x => x.id === updated.id ? updated : x))}
+                />
+              ))}
+            </div>
+          )
         )}
       </div>
 
-      {/* Modal de assinatura */}
       {signTarget && (
         <SignModal
           candidatura={signTarget}
