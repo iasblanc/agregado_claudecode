@@ -192,6 +192,28 @@ export default function AvaliacoesAgregadoPage() {
         <h1 className="font-serif text-2xl font-bold text-text-primary">Avaliações</h1>
       </div>
 
+      {/* ── Rating Hero ──────────────────────────────────────── */}
+      {recebidas.length > 0 && (
+        <div className="bg-surface border border-border rounded-2xl p-6 text-center">
+          <p className="text-[10px] uppercase tracking-widest text-text-muted font-sans mb-3">Sua nota média</p>
+          <p className="font-serif text-[56px] font-bold text-text-primary leading-none mb-2">
+            {notaGeral.toFixed(1)}
+          </p>
+          <div className="flex justify-center gap-1 mb-2">
+            {[1,2,3,4,5].map(n => (
+              <Star
+                key={n}
+                size={22}
+                className={n <= Math.round(notaGeral) ? 'text-[#C8A84B] fill-[#C8A84B]' : 'text-border'}
+              />
+            ))}
+          </div>
+          <p className="text-xs text-text-muted">
+            Baseada em {recebidas.length} avaliação{recebidas.length !== 1 ? 'ões' : ''}
+          </p>
+        </div>
+      )}
+
       {/* Sub-tabs */}
       <div className="flex overflow-x-auto border-b border-border gap-0">
         {([
