@@ -2,8 +2,29 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { Users, Filter, CheckCircle2, X, Eye, Loader2 } from 'lucide-react'
+import { Users, Filter, CheckCircle2, X, Eye, Loader2, FileText, AlertTriangle, ShieldCheck, ShieldX, CalendarDays, ExternalLink } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
+
+type DocStatus = 'pendente' | 'verificado' | 'rejeitado' | 'vencido'
+interface Documento {
+  id: string
+  tipo: string
+  nome_arquivo: string | null
+  url: string | null
+  data_validade: string | null
+  status: DocStatus
+  observacao: string | null
+}
+const TIPO_LABEL: Record<string, string> = {
+  cnh: 'CNH', rntrc: 'RNTRC', crlv: 'CRLV', seguro: 'Seguro',
+  contrato_social: 'Contrato Social', outros: 'Outros',
+}
+const DOC_STATUS_CFG: Record<DocStatus, { label: string; color: string; bg: string }> = {
+  pendente:   { label: 'Pendente',   color: 'text-warning', bg: 'bg-warning-light'  },
+  verificado: { label: 'Verificado', color: 'text-success', bg: 'bg-success-light'  },
+  rejeitado:  { label: 'Rejeitado',  color: 'text-danger',  bg: 'bg-danger-light'   },
+  vencido:    { label: 'Vencido',    color: 'text-danger',  bg: 'bg-danger-light'   },
+}
 
 // Status pipeline fiel ao HTML de referência
 type CandStatus = 'pendente' | 'visualizado' | 'em_negociacao' | 'em_formalizacao' | 'aceito' | 'contratado' | 'recusado'
@@ -68,6 +89,10 @@ export default function CandidatosPage() {
   const [selectedCand, setSelectedCand] = useState<Candidatura | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [modalTab, setModalTab] = useState<'perfil' | 'documentos'>('perfil')
+  const [documentos, setDocumentos] = useState<Documento[]>([])
+  const [docsLoading, setDocsLoading] = useState(false)
+  const [verifyLoading, setVerifyLoading] = useState<string | null>(null)
 
   const fetchCandidaturas = useCallback(async () => {
     setLoading(true)
@@ -150,11 +175,46 @@ export default function CandidatosPage() {
     }
   }
 
+  async function loadDocumentos(agregadoId: string) {
+    setDocsLoading(true)
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('documentos')
+      .select('id, tipo, nome_arquivo, url, data_validade, status, observacao')
+      .eq('agregado_id', agregadoId)
+      .order('tipo')
+    setDocumentos((data as Documento[]) ?? [])
+    setDocsLoading(false)
+  }
+
+  async function verifyDoc(docId: string, newStatus: 'verificado' | 'rejeitado', obs?: string) {
+    setVerifyLoading(docId)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    await supabase.from('documentos').update({
+      status: newStatus,
+      observacao: obs ?? null,
+      verificado_por: user?.id,
+      verificado_em: new Date().toISOString(),
+    }).eq('id', docId)
+    setDocumentos(prev => prev.map(d => d.id === docId ? { ...d, status: newStatus, observacao: obs ?? null } : d))
+    setVerifyLoading(null)
+  }
+
   function openModal(c: Candidatura) {
     setSelectedCand(c)
     setShowModal(true)
+    setModalTab('perfil')
+    setDocumentos([])
     // Mark as viewed
     if (c.status === 'pendente') updateStatus(c.id, 'visualizado')
+  }
+
+  function handleTabChange(tab: 'perfil' | 'documentos') {
+    setModalTab(tab)
+    if (tab === 'documentos' && selectedCand && documentos.length === 0) {
+      loadDocumentos(selectedCand.agregado_id)
+    }
   }
 
   const novosCount = candidaturas.filter(c => c.status === 'pendente').length
@@ -318,47 +378,174 @@ export default function CandidatosPage() {
               </button>
             </div>
 
-            {/* Modal body */}
-            <div className="p-5 space-y-4">
-              <div className="bg-surface rounded-xl p-3">
-                <p className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Candidatou-se para</p>
-                <p className="font-serif text-lg font-semibold text-text-primary">
-                  {selectedCand.vagas?.rota_origem} → {selectedCand.vagas?.rota_destino}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-surface rounded-xl p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Status</p>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-pill ${STATUS_BADGE[selectedCand.status]}`}>
-                    {STATUS_LABEL[selectedCand.status]}
-                  </span>
-                </div>
-                <div className="bg-surface rounded-xl p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Remuneração</p>
-                  <p className="text-sm font-semibold text-success">
-                    {selectedCand.vagas?.valor_km ? `R$ ${selectedCand.vagas.valor_km.toFixed(2).replace('.', ',')}/km` : '—'}
-                  </p>
-                </div>
-              </div>
-
-              {selectedCand.veiculos && (
-                <div className="bg-surface rounded-xl p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Veículo</p>
-                  <p className="text-sm font-medium text-text-primary">
-                    {selectedCand.veiculos.tipo} · {selectedCand.veiculos.placa}
-                    {selectedCand.veiculos.ano ? ` · ${selectedCand.veiculos.ano}` : ''}
-                  </p>
-                </div>
-              )}
-
-              {selectedCand.mensagem && (
-                <div className="bg-surface rounded-xl p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Mensagem do candidato</p>
-                  <p className="text-sm text-text-secondary italic">"{selectedCand.mensagem}"</p>
-                </div>
-              )}
+            {/* Tabs */}
+            <div className="flex border-b border-border">
+              {(['perfil', 'documentos'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => handleTabChange(tab)}
+                  className={`flex-1 py-2.5 text-xs font-medium capitalize border-b-2 transition-colors ${
+                    modalTab === tab ? 'border-accent text-text-primary' : 'border-transparent text-text-muted hover:text-text-secondary'
+                  }`}
+                >
+                  {tab === 'perfil' ? 'Perfil' : 'Documentos'}
+                </button>
+              ))}
             </div>
+
+            {/* Modal body — Perfil */}
+            {modalTab === 'perfil' && (
+              <div className="p-5 space-y-4">
+                <div className="bg-surface rounded-xl p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Candidatou-se para</p>
+                  <p className="font-serif text-lg font-semibold text-text-primary">
+                    {selectedCand.vagas?.rota_origem} → {selectedCand.vagas?.rota_destino}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-surface rounded-xl p-3">
+                    <p className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Status</p>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-pill ${STATUS_BADGE[selectedCand.status]}`}>
+                      {STATUS_LABEL[selectedCand.status]}
+                    </span>
+                  </div>
+                  <div className="bg-surface rounded-xl p-3">
+                    <p className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Remuneração</p>
+                    <p className="text-sm font-semibold text-success">
+                      {selectedCand.vagas?.valor_km ? `R$ ${selectedCand.vagas.valor_km.toFixed(2).replace('.', ',')}/km` : '—'}
+                    </p>
+                  </div>
+                </div>
+
+                {selectedCand.veiculos && (
+                  <div className="bg-surface rounded-xl p-3">
+                    <p className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Veículo</p>
+                    <p className="text-sm font-medium text-text-primary">
+                      {selectedCand.veiculos.tipo} · {selectedCand.veiculos.placa}
+                      {selectedCand.veiculos.ano ? ` · ${selectedCand.veiculos.ano}` : ''}
+                    </p>
+                  </div>
+                )}
+
+                {selectedCand.mensagem && (
+                  <div className="bg-surface rounded-xl p-3">
+                    <p className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Mensagem do candidato</p>
+                    <p className="text-sm text-text-secondary italic">"{selectedCand.mensagem}"</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Modal body — Documentos */}
+            {modalTab === 'documentos' && (
+              <div className="p-5 max-h-[50vh] overflow-y-auto">
+                {docsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 size={22} className="animate-spin text-text-muted" />
+                  </div>
+                ) : documentos.length === 0 ? (
+                  <div className="text-center py-8">
+                    <FileText size={32} className="text-text-muted mx-auto mb-2" />
+                    <p className="text-sm text-text-secondary font-medium">Nenhum documento enviado</p>
+                    <p className="text-xs text-text-muted mt-1">O candidato ainda não enviou documentos.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {documentos.map(doc => {
+                      const dias = doc.data_validade
+                        ? Math.ceil((new Date(doc.data_validade).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                        : null
+                      const isExpired = dias !== null && dias < 0
+                      const effectiveStatus: DocStatus = isExpired ? 'vencido' : doc.status
+                      const cfg = DOC_STATUS_CFG[effectiveStatus]
+                      return (
+                        <div key={doc.id} className="border border-border rounded-xl p-3.5 space-y-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <FileText size={14} className="text-text-muted flex-shrink-0" />
+                              <span className="text-sm font-semibold text-text-primary">
+                                {TIPO_LABEL[doc.tipo] ?? doc.tipo}
+                              </span>
+                              {doc.nome_arquivo && (
+                                <span className="text-[10px] text-text-muted truncate max-w-[100px]">{doc.nome_arquivo}</span>
+                              )}
+                            </div>
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.color}`}>
+                              {cfg.label}
+                            </span>
+                          </div>
+
+                          {doc.data_validade && (
+                            <div className={`flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg ${
+                              isExpired ? 'bg-danger-light text-danger' :
+                              (dias !== null && dias <= 30) ? 'bg-warning-light text-warning' :
+                              'bg-bg border border-border text-text-muted'
+                            }`}>
+                              <CalendarDays size={11} />
+                              {isExpired
+                                ? `Vencido em ${new Date(doc.data_validade).toLocaleDateString('pt-BR')}`
+                                : `Válido até ${new Date(doc.data_validade).toLocaleDateString('pt-BR')}`}
+                            </div>
+                          )}
+
+                          {doc.observacao && (
+                            <p className="text-xs text-danger bg-danger-light border border-danger/20 rounded-lg px-2.5 py-1.5 italic">
+                              {doc.observacao}
+                            </p>
+                          )}
+
+                          <div className="flex items-center gap-2 pt-1 border-t border-border">
+                            {doc.url && (
+                              <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-xs text-accent hover:underline">
+                                <ExternalLink size={11} /> Ver arquivo
+                              </a>
+                            )}
+                            {effectiveStatus !== 'verificado' && !isExpired && (
+                              <button
+                                onClick={() => verifyDoc(doc.id, 'verificado')}
+                                disabled={verifyLoading === doc.id}
+                                className="ml-auto flex items-center gap-1 text-xs text-success bg-success-light border border-success/20 px-2.5 py-1 rounded-pill hover:bg-success/10 disabled:opacity-50 transition-colors"
+                              >
+                                <ShieldCheck size={11} />
+                                {verifyLoading === doc.id ? '...' : 'Verificar'}
+                              </button>
+                            )}
+                            {effectiveStatus !== 'rejeitado' && (
+                              <button
+                                onClick={async () => {
+                                  const motivo = prompt('Motivo da rejeição (opcional):') ?? ''
+                                  await verifyDoc(doc.id, 'rejeitado', motivo || undefined)
+                                }}
+                                disabled={verifyLoading === doc.id}
+                                className="flex items-center gap-1 text-xs text-danger bg-danger-light border border-danger/20 px-2.5 py-1 rounded-pill hover:bg-danger/10 disabled:opacity-50 transition-colors"
+                              >
+                                <ShieldX size={11} />
+                                Rejeitar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+
+                    {/* Summary */}
+                    <div className="pt-1 flex items-center gap-3 text-xs text-text-muted">
+                      <span className="flex items-center gap-1 text-success">
+                        <ShieldCheck size={12} /> {documentos.filter(d => d.status === 'verificado').length} verificado{documentos.filter(d => d.status === 'verificado').length !== 1 ? 's' : ''}
+                      </span>
+                      <span className="flex items-center gap-1 text-warning">
+                        <AlertTriangle size={12} /> {documentos.filter(d => d.status === 'pendente').length} pendente{documentos.filter(d => d.status === 'pendente').length !== 1 ? 's' : ''}
+                      </span>
+                      <span className="flex items-center gap-1 text-danger">
+                        <X size={12} /> {documentos.filter(d => d.status === 'rejeitado' || d.status === 'vencido').length} rejeitado/vencido
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Modal footer */}
             <div className="flex items-center gap-2 p-5 border-t border-border">

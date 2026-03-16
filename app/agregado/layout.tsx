@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
   LayoutDashboard, Calculator, Search, FileText, Star,
-  TrendingUp, BookUser, LogOut, Bell, MoreHorizontal, X, UserCircle,
+  TrendingUp, BookUser, LogOut, Bell, MoreHorizontal, X, UserCircle, ShieldCheck,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 
@@ -19,6 +19,7 @@ const primaryNav = [
 
 const secondaryNav = [
   { href: '/agregado/cadastros',    icon: BookUser,        label: 'Frota e Cadastros' },
+  { href: '/agregado/documentos',   icon: ShieldCheck,     label: 'Documentos' },
   { href: '/agregado/avaliacoes',   icon: Star,            label: 'Avaliações' },
   { href: '/agregado/minhas-candidaturas', icon: Search,   label: 'Minhas Candidaturas' },
   { href: '/agregado/perfil',       icon: UserCircle,      label: 'Meu Perfil' },
