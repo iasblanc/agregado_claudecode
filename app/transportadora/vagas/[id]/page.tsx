@@ -101,13 +101,13 @@ export default function VagaDetailPage() {
     setActionLoading('duplicar')
     try {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) return
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { id, created_at, transportadora, ...rest } = vaga
       const { error } = await supabase.from('vagas').insert({
         ...rest,
-        transportadora_id: user.id,
+        transportadora_id: session.user.id,
         titulo: (rest.titulo ? rest.titulo + ' (cópia)' : null),
         status: 'ativa',
       })
@@ -125,15 +125,16 @@ export default function VagaDetailPage() {
     setError(null)
     try {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/login'); return }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) { router.push('/auth/login'); return }
+      const userId = session.user.id
 
       // Fetch vaga
       const { data: vagaData, error: vagaError } = await supabase
         .from('vagas')
         .select('*')
         .eq('id', vagaId)
-        .eq('transportadora_id', user.id)
+        .eq('transportadora_id', userId)
         .single()
 
       if (vagaError || !vagaData) {
@@ -165,7 +166,8 @@ export default function VagaDetailPage() {
     } finally {
       setLoading(false)
     }
-  }, [vagaId, router])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vagaId])
 
   useEffect(() => {
     fetchData()
