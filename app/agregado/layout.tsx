@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, Calculator, Search, FileText, BookUser, LogOut, Bell } from 'lucide-react'
+import { LayoutDashboard, Calculator, Search, FileText, Star, LogOut, Bell } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 
 const navItems = [
@@ -10,7 +10,7 @@ const navItems = [
   { href: '/agregado/marketplace', icon: Search, label: 'Vagas' },
   { href: '/agregado/contratos', icon: FileText, label: 'Contratos' },
   { href: '/agregado/custo-km', icon: Calculator, label: 'Custos' },
-  { href: '/agregado/cadastros', icon: BookUser, label: 'Mais' },
+  { href: '/agregado/avaliacoes', icon: Star, label: 'Avaliações' },
 ]
 
 export default function AgregadoLayout({ children }: { children: React.ReactNode }) {
