@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { FileText, Loader2, ChevronDown, MessageSquare, Clock, AlertTriangle, Send } from 'lucide-react'
 import { formatCurrency } from '@/lib/types'
 
-type ContratoStatus = 'ativo' | 'suspenso' | 'encerrado'
+type ContratoStatus = 'pendente_assinatura' | 'ativo' | 'suspenso' | 'encerrado'
 type MsgTipo = 'transportadora' | 'motorista'
 
 interface Mensagem {
@@ -161,9 +161,17 @@ export default function ContratosPage() {
   }
 
   const badgeClass: Record<ContratoStatus, string> = {
+    pendente_assinatura: 'bg-[rgba(194,107,58,.12)] text-[#C26B3A]',
     ativo:     'bg-success-light text-success',
     suspenso:  'bg-warning-light text-warning',
     encerrado: 'bg-gray-100 text-gray-600',
+  }
+
+  const badgeLabel: Record<ContratoStatus, string> = {
+    pendente_assinatura: 'Aguard. assinatura',
+    ativo: 'Ativo',
+    suspenso: 'Suspenso',
+    encerrado: 'Encerrado',
   }
 
   return (
@@ -177,7 +185,7 @@ export default function ContratosPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
-        {(['', 'ativo', 'suspenso', 'encerrado'] as const).map(s => (
+        {(['', 'pendente_assinatura', 'ativo', 'suspenso', 'encerrado'] as const).map(s => (
           <button
             key={s}
             onClick={() => setFiltroStatus(s)}
@@ -187,7 +195,7 @@ export default function ContratosPage() {
                 : 'bg-bg border-border text-text-secondary hover:border-accent/40'
             }`}
           >
-            {s ? (s.charAt(0).toUpperCase() + s.slice(1)) : 'Todos'}
+            {s === '' ? 'Todos' : s === 'pendente_assinatura' ? 'Aguard. assinatura' : s.charAt(0).toUpperCase() + s.slice(1)}
           </button>
         ))}
       </div>
@@ -220,7 +228,9 @@ export default function ContratosPage() {
                 >
                   {/* Status bar */}
                   <div className={`w-1 self-stretch rounded-full flex-shrink-0 ${
-                    c.status === 'ativo' ? 'bg-success' : c.status === 'suspenso' ? 'bg-warning' : 'bg-text-muted'
+                    c.status === 'ativo' ? 'bg-success' :
+                    c.status === 'suspenso' ? 'bg-warning' :
+                    c.status === 'pendente_assinatura' ? 'bg-[#C26B3A]' : 'bg-border'
                   }`} />
 
                   {/* Avatar */}
@@ -233,7 +243,7 @@ export default function ContratosPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-text-primary text-sm">{nome}</p>
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-pill ${badgeClass[c.status]}`}>
-                        {c.status}
+                        {badgeLabel[c.status]}
                       </span>
                     </div>
                     <p className="text-xs text-text-muted">
@@ -244,23 +254,44 @@ export default function ContratosPage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                    {c.status === 'pendente_assinatura' && (
+                      <span className="text-[10px] text-[#C26B3A] font-sans">Aguardando agregado</span>
+                    )}
                     {c.status === 'ativo' && (
-                      <button
-                        onClick={() => updateContratoStatus(c.id, 'suspenso')}
-                        disabled={saving === c.id}
-                        className="text-xs px-3 py-1.5 rounded-pill border border-border text-text-secondary hover:bg-warning-light hover:border-warning/20 hover:text-warning transition-colors"
-                      >
-                        ⏸ Suspender
-                      </button>
+                      <>
+                        <button
+                          onClick={() => updateContratoStatus(c.id, 'suspenso')}
+                          disabled={saving === c.id}
+                          className="text-xs px-3 py-1.5 rounded-pill border border-border text-text-secondary hover:bg-warning-light hover:border-warning/20 hover:text-warning transition-colors"
+                        >
+                          ⏸ Suspender
+                        </button>
+                        <button
+                          onClick={() => { if (!window.confirm('Encerrar este contrato?')) return; updateContratoStatus(c.id, 'encerrado') }}
+                          disabled={saving === c.id}
+                          className="text-xs px-3 py-1.5 rounded-pill border border-danger/20 text-danger bg-danger-light hover:bg-danger/10 transition-colors"
+                        >
+                          Encerrar
+                        </button>
+                      </>
                     )}
                     {c.status === 'suspenso' && (
-                      <button
-                        onClick={() => updateContratoStatus(c.id, 'ativo')}
-                        disabled={saving === c.id}
-                        className="text-xs px-3 py-1.5 rounded-pill bg-accent text-bg hover:opacity-90 transition-opacity"
-                      >
-                        ▶ Reativar
-                      </button>
+                      <>
+                        <button
+                          onClick={() => updateContratoStatus(c.id, 'ativo')}
+                          disabled={saving === c.id}
+                          className="text-xs px-3 py-1.5 rounded-pill bg-accent text-bg hover:opacity-90 transition-opacity"
+                        >
+                          ▶ Reativar
+                        </button>
+                        <button
+                          onClick={() => { if (!window.confirm('Encerrar este contrato?')) return; updateContratoStatus(c.id, 'encerrado') }}
+                          disabled={saving === c.id}
+                          className="text-xs px-3 py-1.5 rounded-pill border border-danger/20 text-danger bg-danger-light hover:bg-danger/10 transition-colors"
+                        >
+                          Encerrar
+                        </button>
+                      </>
                     )}
                     <ChevronDown
                       size={16}

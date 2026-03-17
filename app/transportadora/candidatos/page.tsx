@@ -93,6 +93,9 @@ export default function CandidatosPage() {
   const [documentos, setDocumentos] = useState<Documento[]>([])
   const [docsLoading, setDocsLoading] = useState(false)
   const [verifyLoading, setVerifyLoading] = useState<string | null>(null)
+  // Rejection dialog state
+  const [rejectDialog, setRejectDialog] = useState<{ id: string; nome: string; fromModal?: boolean } | null>(null)
+  const [rejectMotivo, setRejectMotivo] = useState('')
 
   const fetchCandidaturas = useCallback(async () => {
     setLoading(true)
@@ -175,6 +178,21 @@ export default function CandidatosPage() {
     }
   }
 
+  async function confirmReject() {
+    if (!rejectDialog) return
+    setActionLoading(rejectDialog.id)
+    const supabase = createClient()
+    await supabase.from('candidaturas').update({ status: 'recusado' }).eq('id', rejectDialog.id)
+    setCandidaturas(prev => prev.map(c => c.id === rejectDialog.id ? { ...c, status: 'recusado' as CandStatus } : c))
+    if (rejectDialog.fromModal) {
+      setSelectedCand(prev => prev ? { ...prev, status: 'recusado' as CandStatus } : null)
+      setShowModal(false)
+    }
+    setActionLoading(null)
+    setRejectDialog(null)
+    setRejectMotivo('')
+  }
+
   async function loadDocumentos(agregadoId: string) {
     setDocsLoading(true)
     const supabase = createClient()
@@ -240,7 +258,7 @@ export default function CandidatosPage() {
           <Filter size={14} className="text-text-muted" />
           <span className="text-xs text-text-muted">Status:</span>
         </div>
-        {(['', 'pendente', 'visualizado', 'em_negociacao', 'aceito', 'contratado', 'recusado'] as const).map(s => (
+        {(['', 'pendente', 'visualizado', 'em_negociacao', 'em_formalizacao', 'contratado', 'recusado'] as const).map(s => (
           <button
             key={s}
             onClick={() => setFiltroStatus(s)}
@@ -337,10 +355,7 @@ export default function CandidatosPage() {
                   )}
                   {PODE_RECUSAR.includes(c.status) && (
                     <button
-                      onClick={() => {
-                        if (!confirm(`Recusar a candidatura de ${nome}?`)) return
-                        updateStatus(c.id, 'recusado')
-                      }}
+                      onClick={() => { setRejectDialog({ id: c.id, nome }); setRejectMotivo('') }}
                       disabled={actionLoading === c.id}
                       className="flex items-center gap-1.5 text-xs font-medium text-danger bg-danger-light border border-danger/20 px-3 py-1.5 rounded-pill hover:bg-danger/10 transition-colors disabled:opacity-50 ml-auto"
                     >
@@ -515,8 +530,7 @@ export default function CandidatosPage() {
                             {effectiveStatus !== 'rejeitado' && (
                               <button
                                 onClick={async () => {
-                                  const motivo = prompt('Motivo da rejeição (opcional):') ?? ''
-                                  await verifyDoc(doc.id, 'rejeitado', motivo || undefined)
+                                  await verifyDoc(doc.id, 'rejeitado')
                                 }}
                                 disabled={verifyLoading === doc.id}
                                 className="flex items-center gap-1 text-xs text-danger bg-danger-light border border-danger/20 px-2.5 py-1 rounded-pill hover:bg-danger/10 disabled:opacity-50 transition-colors"
@@ -558,9 +572,8 @@ export default function CandidatosPage() {
               {PODE_RECUSAR.includes(selectedCand.status) && (
                 <button
                   onClick={() => {
-                    if (!confirm(`Recusar a candidatura de ${selectedCand.perfil?.nome}?`)) return
-                    updateStatus(selectedCand.id, 'recusado')
-                    setShowModal(false)
+                    setRejectDialog({ id: selectedCand.id, nome: selectedCand.perfil?.nome ?? 'Candidato', fromModal: true })
+                    setRejectMotivo('')
                   }}
                   className="px-4 py-2 rounded-pill border border-danger/20 text-sm text-danger bg-danger-light hover:bg-danger/10 transition-colors"
                 >
@@ -578,6 +591,40 @@ export default function CandidatosPage() {
                   ✓ Aprovar → Formalizar contrato
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rejection dialog */}
+      {rejectDialog && (
+        <div className="fixed inset-0 z-[60] bg-black/50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-bg w-full max-w-sm rounded-2xl p-5 shadow-xl">
+            <h3 className="font-serif text-lg font-medium text-text-primary mb-1">Recusar candidatura</h3>
+            <p className="text-sm text-text-muted mb-4">
+              Tem certeza que deseja recusar <strong>{rejectDialog.nome}</strong>?
+            </p>
+            <textarea
+              value={rejectMotivo}
+              onChange={e => setRejectMotivo(e.target.value)}
+              placeholder="Motivo da recusa (opcional — ficará visível para o candidato)"
+              rows={3}
+              className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-surface text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent/40 resize-none mb-4"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setRejectDialog(null); setRejectMotivo('') }}
+                className="flex-1 py-2.5 text-sm border border-border rounded-xl text-text-secondary hover:bg-surface transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmReject}
+                disabled={!!actionLoading}
+                className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-danger text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                Confirmar recusa
+              </button>
             </div>
           </div>
         </div>
