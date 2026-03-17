@@ -31,6 +31,11 @@ export interface Veiculo {
   ano: number | null
   valor_veiculo: number | null
   fotos: string[] | null
+  modelo: string | null
+  cor: string | null
+  renavam: string | null
+  crlv_venc: string | null
+  seguro_venc: string | null
   created_at: string
 }
 
@@ -47,6 +52,10 @@ export interface Equipamento {
   tipo: string
   placa: string | null
   ano: number | null
+  foto_url: string | null
+  crlv_venc: string | null
+  capacidade: string | null
+  tara: number | null
   created_at: string
 }
 
@@ -55,6 +64,9 @@ export interface Motorista {
   agregado_id: string
   nome: string
   cnh: string | null
+  cnh_categoria: string | null
+  cnh_venc: string | null
+  telefone: string | null
   foto_url: string | null
   created_at: string
 }
