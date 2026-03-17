@@ -33,7 +33,7 @@ interface Motorista {
 }
 
 interface CandidaturaEnricada extends Candidatura {
-  profiles?: Profile
+  perfil?: Profile
   veiculos?: Veiculo | null
   equipamentos?: Equipamento | null
   motoristas?: Motorista | null
@@ -154,25 +154,45 @@ export default function VagaDetailPage() {
 
       setVaga(vagaData)
 
-      // Fetch candidaturas with joined data
+      // Fetch candidaturas — mirror exact join syntax from candidatos/page.tsx that is known to work
       const { data: candidaturasData, error: candError } = await supabase
         .from('candidaturas')
         .select(`
           *,
-          profiles!agregado_id (nome),
-          veiculos!veiculo_id (tipo, placa),
-          equipamentos!equipamento_id (tipo, placa),
-          motoristas!motorista_id (nome)
+          perfil:profiles!agregado_id (nome),
+          veiculos (tipo, placa)
         `)
         .eq('vaga_id', vagaId)
         .order('created_at', { ascending: false })
 
-      if (candError) throw candError
+      if (candError) {
+        // Surface the real Supabase error message
+        setError(candError.message ?? 'Erro ao carregar candidaturas')
+        setLoading(false)
+        return
+      }
 
-      setCandidaturas(candidaturasData ?? [])
+      // Enrich with equipamento/motorista data via separate queries if needed
+      const ids = (candidaturasData ?? []).map(c => c.id)
+      let enriched = candidaturasData ?? []
+
+      if (ids.length > 0) {
+        const [eqRes, motRes] = await Promise.all([
+          supabase.from('candidaturas').select('id, equipamento_id, equipamentos(tipo, placa)').in('id', ids),
+          supabase.from('candidaturas').select('id, motorista_id, motoristas(nome)').in('id', ids),
+        ])
+        const eqMap = Object.fromEntries((eqRes.data ?? []).map(r => [r.id, (r as unknown as { equipamentos: Equipamento | null }).equipamentos]))
+        const motMap = Object.fromEntries((motRes.data ?? []).map(r => [r.id, (r as unknown as { motoristas: Motorista | null }).motoristas]))
+        enriched = enriched.map(c => ({
+          ...c,
+          equipamentos: eqMap[c.id] ?? null,
+          motoristas: motMap[c.id] ?? null,
+        }))
+      }
+
+      setCandidaturas(enriched as unknown as CandidaturaEnricada[])
     } catch (err: unknown) {
-      const msg = (err as { message?: string })?.message ?? 'Erro ao carregar dados'
-      setError(msg)
+      setError((err as { message?: string })?.message ?? 'Erro inesperado ao carregar dados')
     } finally {
       setLoading(false)
     }
@@ -509,7 +529,7 @@ export default function VagaDetailPage() {
                       </div>
                       <div>
                         <p className="font-semibold text-text-primary">
-                          {candidatura.profiles?.nome || 'Agregado'}
+                          {candidatura.perfil?.nome || 'Agregado'}
                         </p>
                         <div className="flex items-center gap-1 text-xs text-text-muted mt-0.5">
                           <CalendarDays size={11} />
