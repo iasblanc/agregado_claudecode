@@ -154,43 +154,50 @@ export default function VagaDetailPage() {
 
       setVaga(vagaData)
 
-      // Fetch candidaturas — mirror exact join syntax from candidatos/page.tsx that is known to work
-      const { data: candidaturasData, error: candError } = await supabase
+      // Step 1: fetch candidaturas (no joins — avoids schema cache FK issues)
+      const { data: candsData, error: candError } = await supabase
         .from('candidaturas')
-        .select(`
-          *,
-          perfil:profiles!agregado_id (nome),
-          veiculos (tipo, placa)
-        `)
+        .select('*')
         .eq('vaga_id', vagaId)
         .order('created_at', { ascending: false })
 
       if (candError) {
-        // Surface the real Supabase error message
         setError(candError.message ?? 'Erro ao carregar candidaturas')
         setLoading(false)
         return
       }
 
-      // Enrich with equipamento/motorista data via separate queries if needed
-      const ids = (candidaturasData ?? []).map(c => c.id)
-      let enriched = candidaturasData ?? []
+      const cands = candsData ?? []
 
-      if (ids.length > 0) {
-        const [eqRes, motRes] = await Promise.all([
-          supabase.from('candidaturas').select('id, equipamento_id, equipamentos(tipo, placa)').in('id', ids),
-          supabase.from('candidaturas').select('id, motorista_id, motoristas(nome)').in('id', ids),
-        ])
-        const eqMap = Object.fromEntries((eqRes.data ?? []).map(r => [r.id, (r as unknown as { equipamentos: Equipamento | null }).equipamentos]))
-        const motMap = Object.fromEntries((motRes.data ?? []).map(r => [r.id, (r as unknown as { motoristas: Motorista | null }).motoristas]))
-        enriched = enriched.map(c => ({
-          ...c,
-          equipamentos: eqMap[c.id] ?? null,
-          motoristas: motMap[c.id] ?? null,
-        }))
-      }
+      // Step 2: collect unique IDs for batch fetches
+      const agregadoIds = [...new Set(cands.map(c => c.agregado_id).filter(Boolean))] as string[]
+      const veiculoIds  = [...new Set(cands.map(c => c.veiculo_id).filter(Boolean))]  as string[]
+      const equipIds    = [...new Set(cands.map(c => c.equipamento_id).filter(Boolean))] as string[]
+      const motIds      = [...new Set(cands.map(c => c.motorista_id).filter(Boolean))] as string[]
 
-      setCandidaturas(enriched as unknown as CandidaturaEnricada[])
+      // Step 3: parallel fetch all related data directly by ID
+      const [profilesRes, veiculosRes, equipRes, motRes] = await Promise.all([
+        agregadoIds.length ? supabase.from('profiles').select('id, nome').in('id', agregadoIds) : Promise.resolve({ data: [] }),
+        veiculoIds.length  ? supabase.from('veiculos').select('id, tipo, placa').in('id', veiculoIds) : Promise.resolve({ data: [] }),
+        equipIds.length    ? supabase.from('equipamentos').select('id, tipo, placa').in('id', equipIds) : Promise.resolve({ data: [] }),
+        motIds.length      ? supabase.from('motoristas').select('id, nome').in('id', motIds) : Promise.resolve({ data: [] }),
+      ])
+
+      const profileMap  = Object.fromEntries((profilesRes.data ?? []).map((p: {id: string; nome: string | null}) => [p.id, p]))
+      const veiculoMap  = Object.fromEntries((veiculosRes.data ?? []).map((v: {id: string; tipo: string; placa: string}) => [v.id, v]))
+      const equipMap    = Object.fromEntries((equipRes.data ?? []).map((e: {id: string; tipo: string; placa: string | null}) => [e.id, e]))
+      const motMap      = Object.fromEntries((motRes.data ?? []).map((m: {id: string; nome: string}) => [m.id, m]))
+
+      // Step 4: merge
+      const enriched: CandidaturaEnricada[] = cands.map(c => ({
+        ...c,
+        perfil:       c.agregado_id   ? (profileMap[c.agregado_id]   ?? null) : null,
+        veiculos:     c.veiculo_id    ? (veiculoMap[c.veiculo_id]    ?? null) : null,
+        equipamentos: c.equipamento_id ? (equipMap[c.equipamento_id]  ?? null) : null,
+        motoristas:   c.motorista_id  ? (motMap[c.motorista_id]      ?? null) : null,
+      }))
+
+      setCandidaturas(enriched)
     } catch (err: unknown) {
       setError((err as { message?: string })?.message ?? 'Erro inesperado ao carregar dados')
     } finally {
