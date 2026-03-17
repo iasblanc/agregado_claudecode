@@ -12,31 +12,53 @@ import {
   Users, User, MessageSquare, CheckCircle2, XCircle,
   Loader2, AlertCircle, CalendarDays, TrendingUp, RefreshCw,
   Pencil, PauseCircle, PlayCircle, Copy, FileText,
+  ShieldCheck, ShieldAlert, Star, AlertTriangle,
 } from 'lucide-react'
 
 interface Profile {
   nome: string | null
 }
 
-interface Veiculo {
+interface VeiculoInfo {
   tipo: string
   placa: string
+  ano: number | null
 }
 
-interface Equipamento {
+interface EquipamentoInfo {
   tipo: string
   placa: string | null
 }
 
-interface Motorista {
+interface MotoristaInfo {
   nome: string
 }
 
+interface DocSummary {
+  total: number
+  verificados: number
+  pendentes: number
+  rejeitados: number
+}
+
 interface CandidaturaEnricada extends Candidatura {
-  profiles?: Profile
-  veiculos?: Veiculo | null
-  equipamentos?: Equipamento | null
-  motoristas?: Motorista | null
+  perfil?: Profile | null
+  veiculos?: VeiculoInfo | null
+  equipamentos?: EquipamentoInfo | null
+  motoristas?: MotoristaInfo | null
+  docSummary?: DocSummary | null
+  notaMedia?: number | null
+}
+
+const PIPELINE: Array<Candidatura['status']> = [
+  'pendente', 'visualizado', 'em_negociacao', 'em_formalizacao', 'contratado',
+]
+const PIPELINE_LABELS: Record<string, string> = {
+  pendente:        'Novo',
+  visualizado:     'Visto',
+  em_negociacao:   'Negociando',
+  em_formalizacao: 'Formalização',
+  contratado:      'Contratado',
 }
 
 const CAND_STATUS: Record<Candidatura['status'], { label: string; variant: 'warning' | 'success' | 'danger' | 'info' | 'muted' }> = {
@@ -65,6 +87,104 @@ function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('pt-BR', {
     day: '2-digit', month: 'short', year: 'numeric'
   })
+}
+
+/** Mini stepper mostrando onde a candidatura está no pipeline */
+function PipelineStrip({ status }: { status: Candidatura['status'] }) {
+  if (status === 'recusado') {
+    return (
+      <div className="flex items-center gap-1.5 py-2">
+        <XCircle size={12} className="text-danger flex-shrink-0" />
+        <span className="text-xs text-danger">Candidatura recusada</span>
+      </div>
+    )
+  }
+  if (status === 'aceito') {
+    // 'aceito' maps to em_formalizacao visually
+    const activeIdx = PIPELINE.indexOf('em_formalizacao')
+    return <StepBar activeIdx={activeIdx} />
+  }
+  const activeIdx = PIPELINE.indexOf(status)
+  return <StepBar activeIdx={activeIdx} />
+}
+
+function StepBar({ activeIdx }: { activeIdx: number }) {
+  return (
+    <div className="flex items-center gap-0 w-full py-2 overflow-x-auto">
+      {PIPELINE.map((step, i) => {
+        const done    = i < activeIdx
+        const current = i === activeIdx
+        return (
+          <div key={step} className="flex items-center flex-1 min-w-0">
+            <div className="flex flex-col items-center flex-shrink-0">
+              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                done    ? 'bg-success border-success' :
+                current ? 'bg-accent border-accent' :
+                          'bg-bg border-border'
+              }`}>
+                {done && <CheckCircle2 size={10} className="text-white" />}
+                {current && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+              </div>
+              <span className={`text-[9px] mt-0.5 whitespace-nowrap font-medium ${
+                done || current ? 'text-text-primary' : 'text-text-muted'
+              }`}>
+                {PIPELINE_LABELS[step]}
+              </span>
+            </div>
+            {i < PIPELINE.length - 1 && (
+              <div className={`h-0.5 flex-1 mx-0.5 ${done ? 'bg-success' : 'bg-border'}`} />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/** Badge de resumo de documentos */
+function DocBadge({ summary }: { summary: DocSummary | null | undefined }) {
+  if (!summary || summary.total === 0) {
+    return (
+      <div className="flex items-center gap-1 text-xs text-text-muted bg-surface border border-border px-2.5 py-1 rounded-pill">
+        <FileText size={11} />
+        Sem documentos
+      </div>
+    )
+  }
+  const allOk = summary.verificados === summary.total
+  const hasRejected = summary.rejeitados > 0
+  return (
+    <div className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-pill border ${
+      hasRejected ? 'bg-danger-light border-danger/20 text-danger' :
+      allOk       ? 'bg-success-light border-success/20 text-success' :
+                    'bg-warning-light border-warning/20 text-warning'
+    }`}>
+      {hasRejected ? <ShieldAlert size={11} /> : allOk ? <ShieldCheck size={11} /> : <AlertTriangle size={11} />}
+      {summary.verificados}/{summary.total} doc{summary.total !== 1 ? 's' : ''} verificado{summary.verificados !== 1 ? 's' : ''}
+    </div>
+  )
+}
+
+/** Badge de nota média */
+function NotaBadge({ nota }: { nota: number | null | undefined }) {
+  if (nota == null) {
+    return (
+      <div className="flex items-center gap-1 text-xs text-text-muted bg-surface border border-border px-2.5 py-1 rounded-pill">
+        <Star size={11} />
+        Sem avaliações
+      </div>
+    )
+  }
+  return (
+    <div className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-pill border font-medium ${
+      nota >= 4 ? 'bg-success-light border-success/20 text-success' :
+      nota >= 3 ? 'bg-warning-light border-warning/20 text-warning' :
+                  'bg-danger-light border-danger/20 text-danger'
+    }`}>
+      <Star size={11} className="fill-current" />
+      {nota.toFixed(1)} média
+    </div>
+  )
 }
 
 export default function VagaDetailPage() {
@@ -154,25 +274,93 @@ export default function VagaDetailPage() {
 
       setVaga(vagaData)
 
-      // Fetch candidaturas with joined data
-      const { data: candidaturasData, error: candError } = await supabase
+      // Step 1: fetch candidaturas plain (no joins — avoids schema cache FK issues)
+      const { data: candsData, error: candError } = await supabase
         .from('candidaturas')
-        .select(`
-          *,
-          profiles!agregado_id (nome),
-          veiculos!veiculo_id (tipo, placa),
-          equipamentos!equipamento_id (tipo, placa),
-          motoristas!motorista_id (nome)
-        `)
+        .select('*')
         .eq('vaga_id', vagaId)
         .order('created_at', { ascending: false })
 
-      if (candError) throw candError
+      if (candError) {
+        setError(candError.message ?? 'Erro ao carregar candidaturas')
+        setLoading(false)
+        return
+      }
 
-      setCandidaturas(candidaturasData ?? [])
+      const cands = candsData ?? []
+
+      // Step 2: collect unique IDs for batch fetches
+      const agregadoIds = [...new Set(cands.map(c => c.agregado_id).filter(Boolean))] as string[]
+      const veiculoIds  = [...new Set(cands.map(c => c.veiculo_id).filter(Boolean))]  as string[]
+      const equipIds    = [...new Set(cands.map(c => c.equipamento_id).filter(Boolean))] as string[]
+      const motIds      = [...new Set(cands.map(c => c.motorista_id).filter(Boolean))] as string[]
+
+      // Step 3: parallel fetch all related data directly by ID
+      // Note: documentos and avaliacoes are fetched for decision support (no sensitive fields)
+      const [profilesRes, veiculosRes, equipRes, motRes, docsRes, notasRes] = await Promise.all([
+        agregadoIds.length ? supabase.from('profiles').select('id, nome').in('id', agregadoIds) : Promise.resolve({ data: [] }),
+        veiculoIds.length  ? supabase.from('veiculos').select('id, tipo, placa, ano').in('id', veiculoIds) : Promise.resolve({ data: [] }),
+        equipIds.length    ? supabase.from('equipamentos').select('id, tipo, placa').in('id', equipIds) : Promise.resolve({ data: [] }),
+        motIds.length      ? supabase.from('motoristas').select('id, nome').in('id', motIds) : Promise.resolve({ data: [] }),
+        // Documentos: apenas tipo + status para o resumo (sem url/conteúdo)
+        agregadoIds.length ? supabase.from('documentos').select('agregado_id, status').in('agregado_id', agregadoIds) : Promise.resolve({ data: [] }),
+        // Avaliações: nota média por agregado
+        agregadoIds.length ? supabase.from('avaliacoes').select('avaliado_id, nota').in('avaliado_id', agregadoIds) : Promise.resolve({ data: [] }),
+      ])
+
+      const profileMap = Object.fromEntries(
+        (profilesRes.data ?? []).map((p: {id: string; nome: string | null}) => [p.id, p])
+      )
+      const veiculoMap = Object.fromEntries(
+        (veiculosRes.data ?? []).map((v: {id: string; tipo: string; placa: string; ano: number | null}) => [v.id, v])
+      )
+      const equipMap = Object.fromEntries(
+        (equipRes.data ?? []).map((e: {id: string; tipo: string; placa: string | null}) => [e.id, e])
+      )
+      const motMap = Object.fromEntries(
+        (motRes.data ?? []).map((m: {id: string; nome: string}) => [m.id, m])
+      )
+
+      // Build doc summary per agregado_id
+      type DocRow = { agregado_id: string; status: string }
+      const docSummaryMap: Record<string, DocSummary> = {}
+      for (const doc of (docsRes.data ?? []) as DocRow[]) {
+        if (!docSummaryMap[doc.agregado_id]) {
+          docSummaryMap[doc.agregado_id] = { total: 0, verificados: 0, pendentes: 0, rejeitados: 0 }
+        }
+        const s = docSummaryMap[doc.agregado_id]
+        s.total++
+        if (doc.status === 'verificado') s.verificados++
+        else if (doc.status === 'rejeitado' || doc.status === 'vencido') s.rejeitados++
+        else s.pendentes++
+      }
+
+      // Build nota média per avaliado_id
+      type NotaRow = { avaliado_id: string; nota: number }
+      const notaAccum: Record<string, { sum: number; count: number }> = {}
+      for (const av of (notasRes.data ?? []) as NotaRow[]) {
+        if (!notaAccum[av.avaliado_id]) notaAccum[av.avaliado_id] = { sum: 0, count: 0 }
+        notaAccum[av.avaliado_id].sum += av.nota
+        notaAccum[av.avaliado_id].count++
+      }
+      const notaMap: Record<string, number> = Object.fromEntries(
+        Object.entries(notaAccum).map(([id, { sum, count }]) => [id, sum / count])
+      )
+
+      // Step 4: merge
+      const enriched: CandidaturaEnricada[] = cands.map(c => ({
+        ...c,
+        perfil:       c.agregado_id    ? (profileMap[c.agregado_id]    ?? null) : null,
+        veiculos:     c.veiculo_id     ? (veiculoMap[c.veiculo_id]     ?? null) : null,
+        equipamentos: c.equipamento_id ? (equipMap[c.equipamento_id]   ?? null) : null,
+        motoristas:   c.motorista_id   ? (motMap[c.motorista_id]       ?? null) : null,
+        docSummary:   c.agregado_id    ? (docSummaryMap[c.agregado_id] ?? null) : null,
+        notaMedia:    c.agregado_id    ? (notaMap[c.agregado_id]       ?? null) : null,
+      }))
+
+      setCandidaturas(enriched)
     } catch (err: unknown) {
-      const msg = (err as { message?: string })?.message ?? 'Erro ao carregar dados'
-      setError(msg)
+      setError((err as { message?: string })?.message ?? 'Erro inesperado ao carregar dados')
     } finally {
       setLoading(false)
     }
@@ -392,6 +580,9 @@ export default function VagaDetailPage() {
               <div>
                 <p className="text-xs text-text-muted uppercase tracking-wide">Veículo</p>
                 <p className="text-sm text-text-primary">{vaga.tipo_veiculo}</p>
+                {vaga.ano_maximo_veiculo && (
+                  <p className="text-xs text-text-muted">Ano máximo: {vaga.ano_maximo_veiculo}</p>
+                )}
               </div>
             </div>
           )}
@@ -433,7 +624,7 @@ export default function VagaDetailPage() {
           )}
         </div>
 
-        {/* Estimativa mensal — resumo para a transportadora */}
+        {/* Estimativa mensal */}
         {(() => {
           const est  = calcEstimativaMensal(vaga)
           const dias = calcDiasMes(vaga)
@@ -495,105 +686,133 @@ export default function VagaDetailPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {candidaturas.map((candidatura) => (
-              <Card key={candidatura.id} padding="none" className="overflow-hidden">
-                <div className={`h-1 ${
-                  candidatura.status === 'aceito' ? 'bg-success' :
-                  candidatura.status === 'recusado' ? 'bg-danger' : 'bg-warning'
-                }`} />
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-info-light rounded-full flex items-center justify-center flex-shrink-0">
-                        <User size={16} className="text-info" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-text-primary">
-                          {candidatura.profiles?.nome || 'Agregado'}
-                        </p>
-                        <div className="flex items-center gap-1 text-xs text-text-muted mt-0.5">
-                          <CalendarDays size={11} />
-                          {formatDate(candidatura.created_at)}
+            {candidaturas.map((candidatura) => {
+              const anoVeiculo = candidatura.veiculos?.ano
+              const anoMaximo  = vaga.ano_maximo_veiculo
+              const anoAlerta  = anoVeiculo && anoMaximo && anoVeiculo < anoMaximo
+
+              return (
+                <Card key={candidatura.id} padding="none" className="overflow-hidden">
+                  {/* Color strip by status */}
+                  <div className={`h-1 ${
+                    candidatura.status === 'contratado'      ? 'bg-success' :
+                    candidatura.status === 'em_formalizacao' ? 'bg-info' :
+                    candidatura.status === 'recusado'        ? 'bg-danger' :
+                    candidatura.status === 'aceito'          ? 'bg-success' :
+                                                               'bg-warning'
+                  }`} />
+
+                  <div className="p-4 space-y-3">
+                    {/* Header: avatar + nome + data + status */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 bg-info-light rounded-full flex items-center justify-center flex-shrink-0">
+                          <User size={16} className="text-info" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-text-primary">
+                            {candidatura.perfil?.nome || 'Agregado'}
+                          </p>
+                          <div className="flex items-center gap-1 text-xs text-text-muted mt-0.5">
+                            <CalendarDays size={11} />
+                            Candidatou em {formatDate(candidatura.created_at)}
+                          </div>
                         </div>
                       </div>
+                      <StatusBadge status={candidatura.status} />
                     </div>
-                    <StatusBadge status={candidatura.status} />
+
+                    {/* Pipeline visual */}
+                    <PipelineStrip status={candidatura.status} />
+
+                    {/* Assets: veículo, equipamento, motorista */}
+                    <div className="flex flex-wrap gap-2">
+                      {candidatura.veiculos && (
+                        <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-pill border ${
+                          anoAlerta
+                            ? 'bg-warning-light border-warning/30 text-warning'
+                            : 'bg-surface border-border text-text-secondary'
+                        }`}>
+                          <Truck size={11} />
+                          {candidatura.veiculos.tipo} · {candidatura.veiculos.placa}
+                          {anoVeiculo ? ` · ${anoVeiculo}` : ''}
+                          {anoAlerta && <AlertTriangle size={10} className="ml-0.5" />}
+                        </div>
+                      )}
+                      {candidatura.equipamentos && (
+                        <div className="flex items-center gap-1.5 text-xs bg-surface border border-border px-2.5 py-1 rounded-pill text-text-secondary">
+                          <Package size={11} />
+                          {candidatura.equipamentos.tipo}
+                          {candidatura.equipamentos.placa ? ` · ${candidatura.equipamentos.placa}` : ''}
+                        </div>
+                      )}
+                      {candidatura.motoristas && (
+                        <div className="flex items-center gap-1.5 text-xs bg-surface border border-border px-2.5 py-1 rounded-pill text-text-secondary">
+                          <User size={11} />
+                          Motorista: {candidatura.motoristas.nome}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Decision aids: documentos + avaliação */}
+                    <div className="flex flex-wrap gap-2">
+                      <DocBadge summary={candidatura.docSummary} />
+                      <NotaBadge nota={candidatura.notaMedia} />
+                    </div>
+
+                    {/* Mensagem do candidato */}
+                    {candidatura.mensagem && (
+                      <div className="flex items-start gap-2 bg-surface rounded-lg p-3">
+                        <MessageSquare size={13} className="text-text-muted flex-shrink-0 mt-0.5" />
+                        <p className="text-sm text-text-secondary leading-relaxed">{candidatura.mensagem}</p>
+                      </div>
+                    )}
+
+                    {/* Action buttons */}
+                    {vaga.status !== 'encerrada' && ['pendente', 'visualizado', 'em_negociacao'].includes(candidatura.status) && (
+                      <div className="flex gap-2 pt-1 border-t border-border">
+                        <Button
+                          variant="success"
+                          size="sm"
+                          className="gap-1.5 flex-1"
+                          onClick={() => handleAceitar(candidatura.id)}
+                          loading={actionLoading === candidatura.id}
+                        >
+                          <CheckCircle2 size={14} />
+                          Aprovar
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          className="gap-1.5 flex-1"
+                          onClick={() => handleRecusar(candidatura.id)}
+                          loading={actionLoading === candidatura.id}
+                        >
+                          <XCircle size={14} />
+                          Recusar
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Status note for em_formalizacao */}
+                    {(candidatura.status === 'em_formalizacao' || candidatura.status === 'aceito') && (
+                      <div className="flex items-center gap-2 pt-1 border-t border-border">
+                        <FileText size={14} className="text-info" />
+                        <p className="text-xs text-info font-medium">Aprovado — aguardando assinatura digital do agregado</p>
+                      </div>
+                    )}
+
+                    {/* Status note for contratado */}
+                    {candidatura.status === 'contratado' && (
+                      <div className="flex items-center gap-2 pt-1 border-t border-border">
+                        <CheckCircle2 size={14} className="text-success" />
+                        <p className="text-xs text-success font-medium">Contrato ativo</p>
+                      </div>
+                    )}
                   </div>
-
-                  {/* Asset info */}
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {candidatura.veiculos && (
-                      <div className="flex items-center gap-1.5 text-xs bg-surface border border-border px-2.5 py-1 rounded-pill text-text-secondary">
-                        <Truck size={11} />
-                        {candidatura.veiculos.tipo} · {candidatura.veiculos.placa}
-                      </div>
-                    )}
-                    {candidatura.equipamentos && (
-                      <div className="flex items-center gap-1.5 text-xs bg-surface border border-border px-2.5 py-1 rounded-pill text-text-secondary">
-                        <Package size={11} />
-                        {candidatura.equipamentos.tipo}
-                        {candidatura.equipamentos.placa ? ` · ${candidatura.equipamentos.placa}` : ''}
-                      </div>
-                    )}
-                    {candidatura.motoristas && (
-                      <div className="flex items-center gap-1.5 text-xs bg-surface border border-border px-2.5 py-1 rounded-pill text-text-secondary">
-                        <User size={11} />
-                        Motorista: {candidatura.motoristas.nome}
-                      </div>
-                    )}
-                  </div>
-
-                  {candidatura.mensagem && (
-                    <div className="flex items-start gap-2 bg-surface rounded-lg p-3 mb-3">
-                      <MessageSquare size={13} className="text-text-muted flex-shrink-0 mt-0.5" />
-                      <p className="text-sm text-text-secondary leading-relaxed">{candidatura.mensagem}</p>
-                    </div>
-                  )}
-
-                  {/* Action buttons — for all actionable statuses while vaga not encerrada */}
-                  {vaga.status !== 'encerrada' && ['pendente', 'visualizado', 'em_negociacao'].includes(candidatura.status) && (
-                    <div className="flex gap-2 pt-3 border-t border-border">
-                      <Button
-                        variant="success"
-                        size="sm"
-                        className="gap-1.5 flex-1"
-                        onClick={() => handleAceitar(candidatura.id)}
-                        loading={actionLoading === candidatura.id}
-                      >
-                        <CheckCircle2 size={14} />
-                        Aprovar
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        className="gap-1.5 flex-1"
-                        onClick={() => handleRecusar(candidatura.id)}
-                        loading={actionLoading === candidatura.id}
-                      >
-                        <XCircle size={14} />
-                        Recusar
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* Status note for em_formalizacao */}
-                  {candidatura.status === 'em_formalizacao' && (
-                    <div className="flex items-center gap-2 pt-3 border-t border-border">
-                      <FileText size={14} className="text-[#C26B3A]" />
-                      <p className="text-xs text-[#C26B3A] font-medium">Aprovado — aguardando assinatura digital do agregado</p>
-                    </div>
-                  )}
-
-                  {/* Status note for contratado */}
-                  {candidatura.status === 'contratado' && (
-                    <div className="flex items-center gap-2 pt-3 border-t border-border">
-                      <CheckCircle2 size={14} className="text-success" />
-                      <p className="text-xs text-success font-medium">Contrato ativo</p>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            ))}
+                </Card>
+              )
+            })}
           </div>
         )}
       </div>
