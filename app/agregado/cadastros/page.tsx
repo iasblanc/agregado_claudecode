@@ -12,7 +12,7 @@ import {
 import {
   Plus, Trash2, Truck, Package, User,
   AlertTriangle, CheckCircle2, Camera, X,
-  Phone, CreditCard, Weight,
+  Phone, CreditCard, Weight, Pencil,
 } from 'lucide-react'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -140,6 +140,12 @@ export default function CadastrosPage() {
   const [saving, setSaving]         = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState('')
+  const [editingId, setEditingId]   = useState<string | null>(null)
+
+  // existing photo URLs preserved during edit
+  const [vExistingFotos,    setVExistingFotos]    = useState<string[]>([])
+  const [eExistingFotoUrl,  setEExistingFotoUrl]  = useState<string | null>(null)
+  const [mExistingFotoUrl,  setMExistingFotoUrl]  = useState<string | null>(null)
 
   // ── Vehicle form ──────────────────────────────────────────────────────────
   const [vTipo,      setVTipo]      = useState<string>(TIPOS_VEICULO[0])
@@ -207,9 +213,39 @@ export default function CadastrosPage() {
     setETipo(TIPOS_EQUIPAMENTO[0]); setEPlaca(''); setEAno(''); setECapacidade('')
     setETara(''); setECrlvVenc(''); setEFoto([])
     setMNome(''); setMTelefone(''); setMCnh(''); setMCnhCategoria(''); setMCnhVenc(''); setMFoto([])
+    setVExistingFotos([]); setEExistingFotoUrl(null); setMExistingFotoUrl(null)
   }
 
-  function openModal() { resetForms(); setModalOpen(true) }
+  function openModal() { resetForms(); setEditingId(null); setModalOpen(true) }
+
+  function openEditVeiculo(v: Veiculo) {
+    resetForms()
+    setEditingId(v.id)
+    setVTipo(v.tipo); setVPlaca(v.placa); setVAno(v.ano?.toString() ?? '')
+    setVModelo(v.modelo ?? ''); setVCor(v.cor ?? '')
+    setVValor(v.valor_veiculo?.toString() ?? ''); setVRenavam(v.renavam ?? '')
+    setVCrlvVenc(v.crlv_venc ?? ''); setVSeguroVenc(v.seguro_venc ?? '')
+    setVExistingFotos(v.fotos ?? [])
+    setModalOpen(true)
+  }
+
+  function openEditEquipamento(e: Equipamento) {
+    resetForms()
+    setEditingId(e.id)
+    setETipo(e.tipo); setEPlaca(e.placa ?? ''); setEAno(e.ano?.toString() ?? '')
+    setECapacidade(e.capacidade ?? ''); setETara(e.tara?.toString() ?? '')
+    setECrlvVenc(e.crlv_venc ?? ''); setEExistingFotoUrl(e.foto_url ?? null)
+    setModalOpen(true)
+  }
+
+  function openEditMotorista(m: Motorista) {
+    resetForms()
+    setEditingId(m.id)
+    setMNome(m.nome); setMTelefone(m.telefone ?? ''); setMCnh(m.cnh ?? '')
+    setMCnhCategoria(m.cnh_categoria ?? ''); setMCnhVenc(m.cnh_venc ?? '')
+    setMExistingFotoUrl(m.foto_url ?? null)
+    setModalOpen(true)
+  }
 
   // ── Upload helper ─────────────────────────────────────────────────────────
   async function uploadFoto(file: File, path: string): Promise<string | null> {
@@ -221,82 +257,93 @@ export default function CadastrosPage() {
     return data.publicUrl
   }
 
-  // ── Save ──────────────────────────────────────────────────────────────────
+  // ── Save (insert or update) ───────────────────────────────────────────────
   async function handleSave() {
     if (!userId) return
     setSaving(true)
     try {
       if (activeTab === 'veiculos') {
         if (!vPlaca.trim()) return
-        const { data, error } = await supabase.from('veiculos').insert({
-          agregado_id: userId,
-          tipo:        vTipo,
-          placa:       vPlaca.trim().toUpperCase(),
-          ano:         vAno ? parseInt(vAno) : null,
-          modelo:      vModelo.trim() || null,
-          cor:         vCor.trim() || null,
-          renavam:     vRenavam.trim() || null,
+        const payload = {
+          tipo:          vTipo,
+          placa:         vPlaca.trim().toUpperCase(),
+          ano:           vAno ? parseInt(vAno) : null,
+          modelo:        vModelo.trim() || null,
+          cor:           vCor.trim() || null,
+          renavam:       vRenavam.trim() || null,
           valor_veiculo: vValor ? parseFloat(vValor.replace(',', '.')) : null,
-          crlv_venc:   vCrlvVenc || null,
-          seguro_venc: vSeguroVenc || null,
-        }).select().single()
+          crlv_venc:     vCrlvVenc || null,
+          seguro_venc:   vSeguroVenc || null,
+        }
+        const recordId = editingId
+        const { data, error } = recordId
+          ? await supabase.from('veiculos').update(payload).eq('id', recordId).select().single()
+          : await supabase.from('veiculos').insert({ ...payload, agregado_id: userId }).select().single()
         if (!error && data) {
-          // Upload up to 4 fotos
-          if (vFotos.length > 0) {
-            const urls: string[] = []
-            for (let i = 0; i < vFotos.length; i++) {
-              const url = await uploadFoto(vFotos[i], `${userId}/veiculos/${data.id}/${i}`)
-              if (url) urls.push(url)
-            }
-            if (urls.length > 0) {
-              await supabase.from('veiculos').update({ fotos: urls }).eq('id', data.id)
-            }
+          const newUrls: string[] = []
+          for (let i = 0; i < vFotos.length; i++) {
+            const url = await uploadFoto(vFotos[i], `${userId}/veiculos/${data.id}/${Date.now()}_${i}`)
+            if (url) newUrls.push(url)
+          }
+          const allFotos = [...vExistingFotos, ...newUrls]
+          if (newUrls.length > 0 || (recordId && vExistingFotos.length !== (data.fotos ?? []).length)) {
+            await supabase.from('veiculos').update({ fotos: allFotos }).eq('id', data.id)
           }
           await fetchVeiculos(userId)
           setModalOpen(false)
-          setSuccessMsg('Veículo cadastrado com sucesso!')
+          setSuccessMsg(recordId ? 'Veículo atualizado com sucesso!' : 'Veículo cadastrado com sucesso!')
           setTimeout(() => setSuccessMsg(''), 4000)
         }
 
       } else if (activeTab === 'equipamentos') {
-        const { data, error } = await supabase.from('equipamentos').insert({
-          agregado_id: userId,
-          tipo:        eTipo,
-          placa:       ePlaca.trim() ? ePlaca.trim().toUpperCase() : null,
-          ano:         eAno ? parseInt(eAno) : null,
-          capacidade:  eCapacidade.trim() || null,
-          tara:        eTara ? parseFloat(eTara.replace(',', '.')) : null,
-          crlv_venc:   eCrlvVenc || null,
-        }).select().single()
+        const payload = {
+          tipo:       eTipo,
+          placa:      ePlaca.trim() ? ePlaca.trim().toUpperCase() : null,
+          ano:        eAno ? parseInt(eAno) : null,
+          capacidade: eCapacidade.trim() || null,
+          tara:       eTara ? parseFloat(eTara.replace(',', '.')) : null,
+          crlv_venc:  eCrlvVenc || null,
+        }
+        const recordId = editingId
+        const { data, error } = recordId
+          ? await supabase.from('equipamentos').update(payload).eq('id', recordId).select().single()
+          : await supabase.from('equipamentos').insert({ ...payload, agregado_id: userId }).select().single()
         if (!error && data) {
           if (eFoto.length > 0) {
             const url = await uploadFoto(eFoto[0], `${userId}/equipamentos/${data.id}/foto`)
             if (url) await supabase.from('equipamentos').update({ foto_url: url }).eq('id', data.id)
+          } else if (recordId && eExistingFotoUrl === null) {
+            await supabase.from('equipamentos').update({ foto_url: null }).eq('id', data.id)
           }
           await fetchEquipamentos(userId)
           setModalOpen(false)
-          setSuccessMsg('Equipamento cadastrado com sucesso!')
+          setSuccessMsg(recordId ? 'Equipamento atualizado com sucesso!' : 'Equipamento cadastrado com sucesso!')
           setTimeout(() => setSuccessMsg(''), 4000)
         }
 
       } else {
         if (!mNome.trim()) return
-        const { data, error } = await supabase.from('motoristas').insert({
-          agregado_id:   userId,
+        const payload = {
           nome:          mNome.trim(),
           telefone:      mTelefone.trim() || null,
           cnh:           mCnh.trim() || null,
           cnh_categoria: mCnhCategoria || null,
           cnh_venc:      mCnhVenc || null,
-        }).select().single()
+        }
+        const recordId = editingId
+        const { data, error } = recordId
+          ? await supabase.from('motoristas').update(payload).eq('id', recordId).select().single()
+          : await supabase.from('motoristas').insert({ ...payload, agregado_id: userId }).select().single()
         if (!error && data) {
           if (mFoto.length > 0) {
             const url = await uploadFoto(mFoto[0], `${userId}/motoristas/${data.id}/foto`)
             if (url) await supabase.from('motoristas').update({ foto_url: url }).eq('id', data.id)
+          } else if (recordId && mExistingFotoUrl === null) {
+            await supabase.from('motoristas').update({ foto_url: null }).eq('id', data.id)
           }
           await fetchMotoristas(userId)
           setModalOpen(false)
-          setSuccessMsg('Motorista cadastrado com sucesso!')
+          setSuccessMsg(recordId ? 'Motorista atualizado com sucesso!' : 'Motorista cadastrado com sucesso!')
           setTimeout(() => setSuccessMsg(''), 4000)
         }
       }
@@ -332,9 +379,11 @@ export default function CadastrosPage() {
     { key: 'motoristas',   label: 'Motoristas',   icon: <User size={16} />,    count: motoristas.length },
   ]
 
-  const modalTitle =
-    activeTab === 'veiculos'     ? 'Novo Veículo'      :
-    activeTab === 'equipamentos' ? 'Novo Equipamento'  : 'Novo Motorista'
+  const modalTitle = editingId
+    ? activeTab === 'veiculos'     ? 'Editar Veículo'
+    : activeTab === 'equipamentos' ? 'Editar Equipamento' : 'Editar Motorista'
+    : activeTab === 'veiculos'     ? 'Novo Veículo'
+    : activeTab === 'equipamentos' ? 'Novo Equipamento'   : 'Novo Motorista'
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-5">
@@ -409,13 +458,21 @@ export default function CadastrosPage() {
                             <span className="font-semibold text-text-primary text-sm font-sans">{v.placa}</span>
                             <Badge variant="muted">{v.tipo}</Badge>
                           </div>
-                          <button
-                            onClick={() => handleDelete(v.id)}
-                            disabled={deletingId === v.id}
-                            className="p-1.5 rounded-lg hover:bg-danger-light text-text-muted hover:text-danger transition-colors disabled:opacity-50 flex-shrink-0"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              onClick={() => openEditVeiculo(v)}
+                              className="p-1.5 rounded-lg hover:bg-accent/10 text-text-muted hover:text-accent transition-colors"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(v.id)}
+                              disabled={deletingId === v.id}
+                              className="p-1.5 rounded-lg hover:bg-danger-light text-text-muted hover:text-danger transition-colors disabled:opacity-50"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
                         </div>
                         <div className="text-xs text-text-muted font-sans mt-0.5 flex flex-wrap gap-x-2">
                           {v.modelo && <span>{v.modelo}</span>}
@@ -475,13 +532,21 @@ export default function CadastrosPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-semibold text-text-primary text-sm font-sans">{e.tipo}</span>
-                          <button
-                            onClick={() => handleDelete(e.id)}
-                            disabled={deletingId === e.id}
-                            className="p-1.5 rounded-lg hover:bg-danger-light text-text-muted hover:text-danger transition-colors disabled:opacity-50 flex-shrink-0"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              onClick={() => openEditEquipamento(e)}
+                              className="p-1.5 rounded-lg hover:bg-accent/10 text-text-muted hover:text-accent transition-colors"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(e.id)}
+                              disabled={deletingId === e.id}
+                              className="p-1.5 rounded-lg hover:bg-danger-light text-text-muted hover:text-danger transition-colors disabled:opacity-50"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
                         </div>
                         <div className="text-xs text-text-muted font-sans mt-0.5 flex flex-wrap gap-x-2">
                           {e.placa && <span>Placa: {e.placa}</span>}
@@ -529,13 +594,21 @@ export default function CadastrosPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-semibold text-text-primary text-sm font-sans">{m.nome}</span>
-                          <button
-                            onClick={() => handleDelete(m.id)}
-                            disabled={deletingId === m.id}
-                            className="p-1.5 rounded-lg hover:bg-danger-light text-text-muted hover:text-danger transition-colors disabled:opacity-50 flex-shrink-0"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              onClick={() => openEditMotorista(m)}
+                              className="p-1.5 rounded-lg hover:bg-accent/10 text-text-muted hover:text-accent transition-colors"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(m.id)}
+                              disabled={deletingId === m.id}
+                              className="p-1.5 rounded-lg hover:bg-danger-light text-text-muted hover:text-danger transition-colors disabled:opacity-50"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
                         </div>
                         <div className="text-xs text-text-muted font-sans mt-0.5 flex flex-wrap gap-x-2">
                           {m.telefone && (
@@ -646,13 +719,35 @@ export default function CadastrosPage() {
                 />
               </div>
 
-              <div className="pt-1 border-t border-border">
-                <PhotoPicker
-                  files={vFotos}
-                  maxPhotos={4}
-                  onChange={setVFotos}
-                  label="Fotos do Veículo (até 4)"
-                />
+              <div className="pt-1 border-t border-border space-y-3">
+                {vExistingFotos.length > 0 && (
+                  <div>
+                    <p className="text-xs text-text-muted uppercase tracking-wide mb-2 font-sans">Fotos atuais</p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {vExistingFotos.map((url, i) => (
+                        <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-border">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={url} alt="" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setVExistingFotos(vExistingFotos.filter((_, idx) => idx !== i))}
+                            className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
+                          >
+                            <X size={10} className="text-white" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {(vExistingFotos.length + vFotos.length) < 4 && (
+                  <PhotoPicker
+                    files={vFotos}
+                    maxPhotos={4 - vExistingFotos.length}
+                    onChange={setVFotos}
+                    label={vExistingFotos.length > 0 ? 'Adicionar mais fotos' : 'Fotos do Veículo (até 4)'}
+                  />
+                )}
               </div>
             </>
           )}
@@ -713,13 +808,31 @@ export default function CadastrosPage() {
                 onChange={e => setECrlvVenc(e.target.value)}
               />
 
-              <div className="pt-1 border-t border-border">
-                <PhotoPicker
-                  files={eFoto}
-                  maxPhotos={1}
-                  onChange={setEFoto}
-                  label="Foto do Equipamento"
-                />
+              <div className="pt-1 border-t border-border space-y-3">
+                {eExistingFotoUrl && eFoto.length === 0 && (
+                  <div>
+                    <p className="text-xs text-text-muted uppercase tracking-wide mb-2 font-sans">Foto atual</p>
+                    <div className="relative w-24 aspect-square rounded-xl overflow-hidden border border-border">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={eExistingFotoUrl} alt="" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setEExistingFotoUrl(null)}
+                        className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
+                      >
+                        <X size={10} className="text-white" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {!eExistingFotoUrl && (
+                  <PhotoPicker
+                    files={eFoto}
+                    maxPhotos={1}
+                    onChange={setEFoto}
+                    label="Foto do Equipamento"
+                  />
+                )}
               </div>
             </>
           )}
@@ -785,13 +898,31 @@ export default function CadastrosPage() {
                 </div>
               </div>
 
-              <div className="pt-1 border-t border-border">
-                <PhotoPicker
-                  files={mFoto}
-                  maxPhotos={1}
-                  onChange={setMFoto}
-                  label="Foto do Motorista"
-                />
+              <div className="pt-1 border-t border-border space-y-3">
+                {mExistingFotoUrl && mFoto.length === 0 && (
+                  <div>
+                    <p className="text-xs text-text-muted uppercase tracking-wide mb-2 font-sans">Foto atual</p>
+                    <div className="relative w-24 aspect-square rounded-xl overflow-hidden border border-border">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={mExistingFotoUrl} alt="" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setMExistingFotoUrl(null)}
+                        className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
+                      >
+                        <X size={10} className="text-white" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {!mExistingFotoUrl && (
+                  <PhotoPicker
+                    files={mFoto}
+                    maxPhotos={1}
+                    onChange={setMFoto}
+                    label="Foto do Motorista"
+                  />
+                )}
               </div>
             </>
           )}
