@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
+import Link from 'next/link'
 import Badge from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
 import {
@@ -10,10 +11,52 @@ import {
 import {
   CheckCircle2, X, ChevronDown, FileSignature,
   Calendar, Truck, DollarSign, Send, MessageSquare,
-  Info,
+  Info, Clock, XCircle, FileText, Package, User, ChevronRight,
 } from 'lucide-react'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
+
+// Candidatura (para a aba de acompanhamento)
+type CandStatus = 'pendente' | 'visualizado' | 'em_negociacao' | 'em_formalizacao' | 'contratado' | 'recusado'
+
+interface CandidaturaFull {
+  id: string
+  status: CandStatus
+  mensagem: string | null
+  created_at: string
+  vagas: {
+    rota_origem: string | null
+    rota_destino: string | null
+    uf_origem: string | null
+    uf_destino: string | null
+    valor_km: number | null
+    km_estimado: number | null
+    frequencia_tipo: string | null
+    valor_contrato: number | null
+    tipo_veiculo: string | null
+    tipo_equipamento: string | null
+    transportadoras: { razao_social: string | null } | null
+  } | null
+  veiculos: { tipo: string; placa: string } | null
+  equipamentos: { tipo: string; placa: string | null } | null
+  motoristas: { nome: string } | null
+}
+
+const CAND_STATUS_CFG: Record<CandStatus, {
+  label: string
+  variant: 'warning' | 'success' | 'danger' | 'info' | 'muted'
+  icon: React.ElementType
+  barColor: string
+}> = {
+  pendente:         { label: 'Em análise',      variant: 'warning', icon: Clock,        barColor: 'bg-[#C8A84B]' },
+  visualizado:      { label: 'Visualizado',     variant: 'info',    icon: Clock,        barColor: 'bg-[#3A4F6B]' },
+  em_negociacao:    { label: 'Em negociação',   variant: 'info',    icon: Clock,        barColor: 'bg-[#3A4F6B]' },
+  em_formalizacao:  { label: 'Aprovada! Assinar', variant: 'warning', icon: FileText,   barColor: 'bg-[#C26B3A]' },
+  contratado:       { label: 'Contratado',      variant: 'success', icon: CheckCircle2, barColor: 'bg-[#3A6B4A]' },
+  recusado:         { label: 'Recusado',        variant: 'danger',  icon: XCircle,      barColor: 'bg-[#8B3A3A]' },
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 
 interface Mensagem {
   de: 'transportadora' | 'motorista'
@@ -599,7 +642,8 @@ function CardParaAssinar({
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function ContratosPage() {
-  const [tab, setTab] = useState<'assinar' | 'ativos' | 'encerrados'>('assinar')
+  const [tab, setTab] = useState<'candidaturas' | 'assinar' | 'ativos' | 'encerrados'>('candidaturas')
+  const [candidaturas, setCandidaturas] = useState<CandidaturaFull[]>([])
   const [paraAssinar, setParaAssinar] = useState<CandidaturaParaAssinar[]>([])
   const [ativos, setAtivos] = useState<ContratoAtivo[]>([])
   const [encerrados, setEncerrados] = useState<ContratoAtivo[]>([])
@@ -616,7 +660,19 @@ export default function ContratosPage() {
 
     const vagaSelect = 'valor_km, km_estimado, frequencia_tipo, forma_pagamento, rota_origem, rota_destino, uf_origem, uf_destino, tipo_veiculo, tipo_equipamento, inicio_previsto, periodo_meses, valor_contrato, transportadora:transportadoras(razao_social)'
 
-    const [{ data: cands }, { data: ativs }, { data: encerrs }] = await Promise.all([
+    const [{ data: cands }, { data: assinar }, { data: ativs }, { data: encerrs }] = await Promise.all([
+      // All candidatures for tracking tab
+      supabase.from('candidaturas')
+        .select(`
+          id, status, mensagem, created_at,
+          vagas(rota_origem, rota_destino, uf_origem, uf_destino, valor_km, km_estimado, frequencia_tipo, valor_contrato, tipo_veiculo, tipo_equipamento, transportadoras(razao_social)),
+          veiculos(tipo, placa),
+          equipamentos(tipo, placa),
+          motoristas(nome)
+        `)
+        .eq('agregado_id', user.id)
+        .order('created_at', { ascending: false }),
+      // Candidatures awaiting signature
       supabase.from('candidaturas')
         .select(`id, vaga_id, status, created_at, vaga:vagas(${vagaSelect})`)
         .eq('agregado_id', user.id)
@@ -634,7 +690,8 @@ export default function ContratosPage() {
         .order('data_inicio', { ascending: false }),
     ])
 
-    setParaAssinar((cands ?? []) as unknown as CandidaturaParaAssinar[])
+    setCandidaturas((cands ?? []) as unknown as CandidaturaFull[])
+    setParaAssinar((assinar ?? []) as unknown as CandidaturaParaAssinar[])
     setAtivos((ativs ?? []) as unknown as ContratoAtivo[])
     setEncerrados((encerrs ?? []) as unknown as ContratoAtivo[])
     setLoading(false)
@@ -644,14 +701,18 @@ export default function ContratosPage() {
 
   function handleSigned(id: string) {
     setParaAssinar(prev => prev.filter(c => c.id !== id))
-    // Reload to pick up the newly created active contract
     setTimeout(loadData, 500)
   }
 
+  const pendentesCount = candidaturas.filter(c =>
+    ['pendente', 'visualizado', 'em_negociacao'].includes(c.status)
+  ).length
+
   const tabs = [
-    { key: 'assinar' as const, label: 'Para assinar', count: paraAssinar.length },
-    { key: 'ativos' as const, label: 'Ativos', count: ativos.length },
-    { key: 'encerrados' as const, label: 'Encerrados' },
+    { key: 'candidaturas' as const, label: 'Candidaturas', count: pendentesCount },
+    { key: 'assinar' as const,      label: 'Para assinar', count: paraAssinar.length },
+    { key: 'ativos' as const,       label: 'Ativos',       count: ativos.length },
+    { key: 'encerrados' as const,   label: 'Encerrados',   count: undefined },
   ]
 
   if (loading) {
@@ -701,6 +762,131 @@ export default function ContratosPage() {
             </button>
           ))}
         </div>
+
+        {/* ── Candidaturas ── */}
+        {tab === 'candidaturas' && (
+          candidaturas.length === 0 ? (
+            <div className="text-center py-14">
+              <div className="w-14 h-14 rounded-full bg-surface flex items-center justify-center mx-auto mb-3">
+                <FileText size={24} className="text-text-muted" />
+              </div>
+              <p className="text-sm font-medium text-text-primary">Nenhuma candidatura ainda</p>
+              <p className="text-xs text-text-muted mt-1">Explore vagas e candidate-se</p>
+              <Link href="/agregado/marketplace">
+                <span className="text-accent text-sm underline mt-3 inline-block">Ver vagas disponíveis →</span>
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {candidaturas.map(c => {
+                const cfg = CAND_STATUS_CFG[c.status] ?? CAND_STATUS_CFG.pendente
+                const { label, variant, icon: StatusIcon, barColor } = cfg
+                const estimativa = c.vagas ? calcEstimativaMensal(c.vagas as Parameters<typeof calcEstimativaMensal>[0]) : null
+                const rota = [
+                  [c.vagas?.rota_origem, c.vagas?.uf_origem].filter(Boolean).join('/'),
+                  [c.vagas?.rota_destino, c.vagas?.uf_destino].filter(Boolean).join('/'),
+                ].filter(Boolean).join(' → ')
+
+                return (
+                  <div key={c.id} className="bg-bg border border-border rounded-2xl overflow-hidden shadow-card">
+                    <div className={`h-[3px] w-full ${barColor}`} />
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] uppercase tracking-[.1em] text-text-muted font-sans mb-0.5">
+                            {c.vagas?.transportadoras?.razao_social ?? 'Transportadora'}
+                          </p>
+                          <h3 className="font-serif text-[17px] font-medium text-text-primary leading-tight truncate">
+                            {rota || '—'}
+                          </h3>
+                        </div>
+                        <Badge variant={variant} className="flex items-center gap-1 shrink-0 mt-0.5 text-[10px]">
+                          <StatusIcon size={10} />{label}
+                        </Badge>
+                      </div>
+
+                      {/* Remuneração */}
+                      {(c.vagas?.valor_km || estimativa) && (
+                        <div className="bg-surface rounded-xl px-3 py-2 mb-3 flex items-center justify-between">
+                          {c.vagas?.valor_km && (
+                            <div>
+                              <p className="text-[9px] text-text-muted">R$/km</p>
+                              <p className="font-serif text-[18px] font-medium text-[#3A6B4A] leading-none">
+                                {formatCurrency(c.vagas.valor_km)}
+                              </p>
+                            </div>
+                          )}
+                          {estimativa && (
+                            <div className="text-right">
+                              <p className="text-[9px] text-text-muted">Estimativa/mês</p>
+                              <p className="font-serif text-[15px] font-medium text-[#3A6B4A] leading-none">
+                                {formatCurrency(estimativa)}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Frota */}
+                      {(c.veiculos || c.equipamentos || c.motoristas) && (
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                          {c.veiculos && (
+                            <div className="flex items-center gap-1 bg-surface border border-border rounded-lg px-2 py-1 text-xs">
+                              <Truck size={10} className="text-text-muted" />
+                              <span className="text-text-secondary">{c.veiculos.tipo}</span>
+                              <span className="text-text-muted">{c.veiculos.placa}</span>
+                            </div>
+                          )}
+                          {c.equipamentos && (
+                            <div className="flex items-center gap-1 bg-surface border border-border rounded-lg px-2 py-1 text-xs">
+                              <Package size={10} className="text-text-muted" />
+                              <span className="text-text-secondary">{c.equipamentos.tipo.split(' ')[0]}</span>
+                            </div>
+                          )}
+                          {c.motoristas && (
+                            <div className="flex items-center gap-1 bg-surface border border-border rounded-lg px-2 py-1 text-xs">
+                              <User size={10} className="text-text-muted" />
+                              <span className="text-text-secondary">{c.motoristas.nome.split(' ')[0]}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between text-[11px] text-text-muted border-t border-border pt-2.5">
+                        <span>{new Date(c.created_at).toLocaleDateString('pt-BR')}</span>
+                      </div>
+
+                      {c.status === 'em_formalizacao' && (
+                        <button
+                          onClick={() => setTab('assinar')}
+                          className="mt-3 w-full flex items-center gap-2 bg-[rgba(194,107,58,.1)] border border-[rgba(194,107,58,.25)] rounded-xl p-3 hover:bg-[rgba(194,107,58,.15)] transition-colors"
+                        >
+                          <FileText size={14} className="text-[#C26B3A] flex-shrink-0" />
+                          <span className="text-[13px] font-medium text-[#C26B3A] flex-1 text-left">
+                            Proposta aprovada! Ir para assinar →
+                          </span>
+                          <ChevronRight size={13} className="text-[#C26B3A]" />
+                        </button>
+                      )}
+                      {c.status === 'contratado' && (
+                        <button
+                          onClick={() => setTab('ativos')}
+                          className="mt-3 w-full flex items-center gap-2 bg-[rgba(58,107,74,.08)] border border-[rgba(58,107,74,.2)] rounded-xl p-3 hover:bg-[rgba(58,107,74,.12)] transition-colors"
+                        >
+                          <CheckCircle2 size={14} className="text-[#3A6B4A] flex-shrink-0" />
+                          <span className="text-[13px] font-medium text-[#3A6B4A] flex-1 text-left">
+                            Contrato ativo! Ver em Contratos Ativos →
+                          </span>
+                          <ChevronRight size={13} className="text-[#3A6B4A]" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        )}
 
         {/* Para assinar */}
         {tab === 'assinar' && (
