@@ -140,6 +140,7 @@ export default function CadastrosPage() {
   const [saving, setSaving]         = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState('')
+  const [uploadWarn, setUploadWarn] = useState('')
 
   // ── Vehicle form ──────────────────────────────────────────────────────────
   const [vTipo,      setVTipo]      = useState<string>(TIPOS_VEICULO[0])
@@ -216,7 +217,10 @@ export default function CadastrosPage() {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
     const fullPath = `${path}.${ext}`
     const { error } = await supabase.storage.from('frota-fotos').upload(fullPath, file, { upsert: true })
-    if (error) return null
+    if (error) {
+      console.error('[uploadFoto] Falha ao enviar', fullPath, error)
+      return null
+    }
     const { data } = supabase.storage.from('frota-fotos').getPublicUrl(fullPath)
     return data.publicUrl
   }
@@ -250,6 +254,9 @@ export default function CadastrosPage() {
             }
             if (urls.length > 0) {
               await supabase.from('veiculos').update({ fotos: urls }).eq('id', data.id)
+            } else if (vFotos.length > 0) {
+              setUploadWarn('Cadastro salvo, mas as fotos não puderam ser enviadas.')
+              setTimeout(() => setUploadWarn(''), 6000)
             }
           }
           await fetchVeiculos(userId)
@@ -271,7 +278,12 @@ export default function CadastrosPage() {
         if (!error && data) {
           if (eFoto.length > 0) {
             const url = await uploadFoto(eFoto[0], `${userId}/equipamentos/${data.id}/foto`)
-            if (url) await supabase.from('equipamentos').update({ foto_url: url }).eq('id', data.id)
+            if (url) {
+              await supabase.from('equipamentos').update({ foto_url: url }).eq('id', data.id)
+            } else {
+              setUploadWarn('Cadastro salvo, mas a foto não pôde ser enviada.')
+              setTimeout(() => setUploadWarn(''), 6000)
+            }
           }
           await fetchEquipamentos(userId)
           setModalOpen(false)
@@ -292,7 +304,12 @@ export default function CadastrosPage() {
         if (!error && data) {
           if (mFoto.length > 0) {
             const url = await uploadFoto(mFoto[0], `${userId}/motoristas/${data.id}/foto`)
-            if (url) await supabase.from('motoristas').update({ foto_url: url }).eq('id', data.id)
+            if (url) {
+              await supabase.from('motoristas').update({ foto_url: url }).eq('id', data.id)
+            } else {
+              setUploadWarn('Cadastro salvo, mas a foto não pôde ser enviada.')
+              setTimeout(() => setUploadWarn(''), 6000)
+            }
           }
           await fetchMotoristas(userId)
           setModalOpen(false)
@@ -355,6 +372,14 @@ export default function CadastrosPage() {
         <div className="flex items-center gap-2 bg-success-light border border-success/20 text-success text-sm rounded-lg px-4 py-3 mb-4">
           <CheckCircle2 size={16} />
           {successMsg}
+        </div>
+      )}
+
+      {/* Upload warning */}
+      {uploadWarn && (
+        <div className="flex items-center gap-2 bg-warning-light border border-warning/20 text-warning text-sm rounded-lg px-4 py-3 mb-4">
+          <AlertTriangle size={16} />
+          {uploadWarn}
         </div>
       )}
 
