@@ -139,6 +139,7 @@ export default function CadastrosPage() {
   const [modalOpen, setModalOpen]   = useState(false)
   const [saving, setSaving]         = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState('')
 
   // ── Vehicle form ──────────────────────────────────────────────────────────
   const [vTipo,      setVTipo]      = useState<string>(TIPOS_VEICULO[0])
@@ -253,6 +254,8 @@ export default function CadastrosPage() {
           }
           await fetchVeiculos(userId)
           setModalOpen(false)
+          setSuccessMsg('Veículo cadastrado com sucesso!')
+          setTimeout(() => setSuccessMsg(''), 4000)
         }
 
       } else if (activeTab === 'equipamentos') {
@@ -272,6 +275,8 @@ export default function CadastrosPage() {
           }
           await fetchEquipamentos(userId)
           setModalOpen(false)
+          setSuccessMsg('Equipamento cadastrado com sucesso!')
+          setTimeout(() => setSuccessMsg(''), 4000)
         }
 
       } else {
@@ -291,6 +296,8 @@ export default function CadastrosPage() {
           }
           await fetchMotoristas(userId)
           setModalOpen(false)
+          setSuccessMsg('Motorista cadastrado com sucesso!')
+          setTimeout(() => setSuccessMsg(''), 4000)
         }
       }
     } finally {
@@ -342,6 +349,14 @@ export default function CadastrosPage() {
           Adicionar
         </Button>
       </div>
+
+      {/* Success message */}
+      {successMsg && (
+        <div className="flex items-center gap-2 bg-success-light border border-success/20 text-success text-sm rounded-lg px-4 py-3 mb-4">
+          <CheckCircle2 size={16} />
+          {successMsg}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-surface border border-border rounded-xl p-1 mb-5">
