@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
-import { formatCurrency, type Vaga } from '@/lib/types'
+import { formatCurrency, calcEstimativaMensal, type Vaga } from '@/lib/types'
 import {
   Plus, MapPin, Truck, Users, Clock, ChevronRight,
   Loader2, AlertCircle, Package, Pencil, PauseCircle,
@@ -22,7 +22,7 @@ interface VagaWithCount extends Vaga {
 function StatusBadge({ status }: { status: Vaga['status'] }) {
   if (status === 'ativa')      return <Badge variant="success">Ativa</Badge>
   if (status === 'pausada')    return <Badge variant="warning">Pausada</Badge>
-  if (status === 'encerrada')  return <Badge variant="warning">Encerrada</Badge>
+  if (status === 'encerrada')  return <Badge variant="danger">Encerrada</Badge>
   return <Badge variant="info">Preenchida</Badge>
 }
 
@@ -270,7 +270,12 @@ export default function TransportadoraVagasPage() {
                     )}
                   </div>
                   <p className="text-sm font-semibold text-success flex-shrink-0">
-                    {vaga.valor_contrato ? formatCurrency(vaga.valor_contrato) + '/mês' : '—'}
+                    {(() => {
+                      const est = calcEstimativaMensal(vaga)
+                      if (est) return formatCurrency(est) + '/mês'
+                      if (vaga.valor_km) return formatCurrency(vaga.valor_km) + '/km'
+                      return '—'
+                    })()}
                   </p>
                 </div>
 

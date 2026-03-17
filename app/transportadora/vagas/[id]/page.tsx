@@ -11,7 +11,7 @@ import {
   ArrowLeft, MapPin, Truck, Package, Clock, DollarSign,
   Users, User, MessageSquare, CheckCircle2, XCircle,
   Loader2, AlertCircle, CalendarDays, TrendingUp, RefreshCw,
-  Pencil, PauseCircle, PlayCircle, Copy,
+  Pencil, PauseCircle, PlayCircle, Copy, FileText,
 } from 'lucide-react'
 
 interface Profile {
@@ -39,16 +39,25 @@ interface CandidaturaEnricada extends Candidatura {
   motoristas?: Motorista | null
 }
 
+const CAND_STATUS: Record<Candidatura['status'], { label: string; variant: 'warning' | 'success' | 'danger' | 'info' | 'muted' }> = {
+  pendente:        { label: 'Novo',             variant: 'warning' },
+  visualizado:     { label: 'Visualizado',      variant: 'muted'   },
+  em_negociacao:   { label: 'Em negociação',    variant: 'info'    },
+  em_formalizacao: { label: 'Em formalização',  variant: 'warning' },
+  aceito:          { label: 'Aprovado',         variant: 'success' },
+  contratado:      { label: 'Contratado',       variant: 'success' },
+  recusado:        { label: 'Recusado',         variant: 'danger'  },
+}
+
 function StatusBadge({ status }: { status: Candidatura['status'] }) {
-  if (status === 'aceito') return <Badge variant="success">Aceito</Badge>
-  if (status === 'recusado') return <Badge variant="danger">Recusado</Badge>
-  return <Badge variant="warning">Pendente</Badge>
+  const cfg = CAND_STATUS[status] ?? CAND_STATUS.pendente
+  return <Badge variant={cfg.variant}>{cfg.label}</Badge>
 }
 
 function VagaStatusBadge({ status }: { status: Vaga['status'] }) {
   if (status === 'ativa')      return <Badge variant="success">Ativa</Badge>
   if (status === 'pausada')    return <Badge variant="warning">Pausada</Badge>
-  if (status === 'encerrada')  return <Badge variant="warning">Encerrada</Badge>
+  if (status === 'encerrada')  return <Badge variant="danger">Encerrada</Badge>
   return <Badge variant="info">Preenchida</Badge>
 }
 
@@ -174,47 +183,65 @@ export default function VagaDetailPage() {
   }, [fetchData])
 
   async function handleAceitar(candidaturaId: string) {
-    if (!confirm('Aceitar este candidato? As demais candidaturas pendentes serão recusadas e a vaga será marcada como preenchida.')) return
+    if (!confirm('Aprovar este candidato e enviar proposta para assinatura digital?')) return
 
     setActionLoading(candidaturaId)
     try {
       const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) return
 
-      // Accept this candidatura
+      const cand = candidaturas.find(c => c.id === candidaturaId)
+      if (!cand) return
+
+      const dataInicio = new Date().toISOString().split('T')[0]
+      const meses = vaga?.periodo_meses ?? 12
+      const dataFim = new Date(Date.now() + meses * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+      // 1. Create contratos_motorista (pendente_assinatura — aguarda assinatura do agregado)
+      const { error: contractError } = await supabase.from('contratos_motorista').insert({
+        candidatura_id: candidaturaId,
+        transportadora_id: session.user.id,
+        agregado_id: cand.agregado_id,
+        vaga_id: vagaId,
+        status: 'pendente_assinatura',
+        data_inicio: dataInicio,
+        data_fim_prevista: dataFim,
+      })
+      if (contractError) throw contractError
+
+      // 2. Move candidatura to em_formalizacao
       const { error: acceptError } = await supabase
-        .from('candidaturas')
-        .update({ status: 'aceito' })
-        .eq('id', candidaturaId)
-
+        .from('candidaturas').update({ status: 'em_formalizacao' }).eq('id', candidaturaId)
       if (acceptError) throw acceptError
 
-      // Reject all other pending candidaturas for this vaga
-      const { error: rejectError } = await supabase
-        .from('candidaturas')
-        .update({ status: 'recusado' })
-        .eq('vaga_id', vagaId)
-        .eq('status', 'pendente')
-        .neq('id', candidaturaId)
+      // 3. If last open slot: auto-reject remaining actionable candidaturas + mark vaga preenchida
+      const vagasAbertas = vaga?.vagas_abertas ?? 1
+      if (vagasAbertas <= 1) {
+        await supabase.from('candidaturas')
+          .update({ status: 'recusado' })
+          .eq('vaga_id', vagaId)
+          .in('status', ['pendente', 'visualizado', 'em_negociacao'])
+          .neq('id', candidaturaId)
 
-      if (rejectError) throw rejectError
+        await supabase.from('vagas').update({ status: 'preenchida' }).eq('id', vagaId)
+        setVaga(prev => prev ? { ...prev, status: 'preenchida' } : prev)
 
-      // Mark vaga as preenchida
-      const { error: vagaError } = await supabase
-        .from('vagas')
-        .update({ status: 'preenchida' })
-        .eq('id', vagaId)
+        setCandidaturas(prev => prev.map(c => {
+          if (c.id === candidaturaId) return { ...c, status: 'em_formalizacao' as const }
+          if (['pendente', 'visualizado', 'em_negociacao'].includes(c.status)) return { ...c, status: 'recusado' as const }
+          return c
+        }))
+      } else {
+        setVaga(prev => prev ? { ...prev, vagas_abertas: vagasAbertas - 1 } : prev)
+        setCandidaturas(prev => prev.map(c =>
+          c.id === candidaturaId ? { ...c, status: 'em_formalizacao' as const } : c
+        ))
+      }
 
-      if (vagaError) throw vagaError
-
-      // Optimistic update
-      setVaga(prev => prev ? { ...prev, status: 'preenchida' } : prev)
-      setCandidaturas(prev => prev.map(c => {
-        if (c.id === candidaturaId) return { ...c, status: 'aceito' }
-        if (c.status === 'pendente') return { ...c, status: 'recusado' }
-        return c
-      }))
+      showFeedback('Candidato aprovado! Aguardando assinatura digital do agregado.')
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Erro ao aceitar candidatura')
+      alert(err instanceof Error ? err.message : 'Erro ao aprovar candidatura')
     } finally {
       setActionLoading(null)
     }
@@ -271,8 +298,9 @@ export default function VagaDetailPage() {
     )
   }
 
-  const pendentes = candidaturas.filter(c => c.status === 'pendente').length
-  const aceitos = candidaturas.filter(c => c.status === 'aceito').length
+  const pendentes = candidaturas.filter(c => ['pendente', 'visualizado', 'em_negociacao'].includes(c.status)).length
+  const emFormalizacao = candidaturas.filter(c => c.status === 'em_formalizacao').length
+  const contratados = candidaturas.filter(c => c.status === 'contratado').length
 
   return (
     <div className="space-y-6">
@@ -442,10 +470,13 @@ export default function VagaDetailPage() {
           </h2>
           <div className="flex items-center gap-2">
             {pendentes > 0 && (
-              <Badge variant="warning">{pendentes} pendente{pendentes !== 1 ? 's' : ''}</Badge>
+              <Badge variant="warning">{pendentes} para analisar</Badge>
             )}
-            {aceitos > 0 && (
-              <Badge variant="success">{aceitos} aceito{aceitos !== 1 ? 's' : ''}</Badge>
+            {emFormalizacao > 0 && (
+              <Badge variant="warning">{emFormalizacao} aguard. assinatura</Badge>
+            )}
+            {contratados > 0 && (
+              <Badge variant="success">{contratados} contratado{contratados !== 1 ? 's' : ''}</Badge>
             )}
             <span className="text-sm text-text-muted">{candidaturas.length} total</span>
           </div>
@@ -518,8 +549,8 @@ export default function VagaDetailPage() {
                     </div>
                   )}
 
-                  {/* Action buttons — only show if vaga is ativa and candidatura is pendente */}
-                  {vaga.status === 'ativa' && candidatura.status === 'pendente' && (
+                  {/* Action buttons — for all actionable statuses while vaga not encerrada */}
+                  {vaga.status !== 'encerrada' && ['pendente', 'visualizado', 'em_negociacao'].includes(candidatura.status) && (
                     <div className="flex gap-2 pt-3 border-t border-border">
                       <Button
                         variant="success"
@@ -529,7 +560,7 @@ export default function VagaDetailPage() {
                         loading={actionLoading === candidatura.id}
                       >
                         <CheckCircle2 size={14} />
-                        Aceitar
+                        Aprovar
                       </Button>
                       <Button
                         variant="danger"
@@ -544,11 +575,19 @@ export default function VagaDetailPage() {
                     </div>
                   )}
 
-                  {/* Show accepted badge note */}
-                  {candidatura.status === 'aceito' && (
+                  {/* Status note for em_formalizacao */}
+                  {candidatura.status === 'em_formalizacao' && (
+                    <div className="flex items-center gap-2 pt-3 border-t border-border">
+                      <FileText size={14} className="text-[#C26B3A]" />
+                      <p className="text-xs text-[#C26B3A] font-medium">Aprovado — aguardando assinatura digital do agregado</p>
+                    </div>
+                  )}
+
+                  {/* Status note for contratado */}
+                  {candidatura.status === 'contratado' && (
                     <div className="flex items-center gap-2 pt-3 border-t border-border">
                       <CheckCircle2 size={14} className="text-success" />
-                      <p className="text-xs text-success font-medium">Candidatura aceita — contrato fechado</p>
+                      <p className="text-xs text-success font-medium">Contrato ativo</p>
                     </div>
                   )}
                 </div>
