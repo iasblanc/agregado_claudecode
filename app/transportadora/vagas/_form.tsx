@@ -583,6 +583,10 @@ export default function VagaForm({ mode, vagaId }: VagaFormProps) {
               <option>Carga Líquida</option>
               <option>Carga Refrigerada</option>
               <option>Eletrônicos / Alto Valor</option>
+              <option>Veículos</option>
+              <option>Caminhões e Ônibus</option>
+              <option>Tratores</option>
+              <option>Máquinas</option>
             </Select>
             <div>
               <label className="block text-xs font-medium text-text-secondary mb-1">Ano máximo do veículo</label>
