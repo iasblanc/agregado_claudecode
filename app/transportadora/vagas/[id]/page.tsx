@@ -159,10 +159,10 @@ export default function VagaDetailPage() {
         .from('candidaturas')
         .select(`
           *,
-          profiles:agregado_id (nome),
-          veiculos:veiculo_id (tipo, placa),
-          equipamentos:equipamento_id (tipo, placa),
-          motoristas:motorista_id (nome)
+          profiles!agregado_id (nome),
+          veiculos!veiculo_id (tipo, placa),
+          equipamentos!equipamento_id (tipo, placa),
+          motoristas!motorista_id (nome)
         `)
         .eq('vaga_id', vagaId)
         .order('created_at', { ascending: false })
@@ -171,7 +171,8 @@ export default function VagaDetailPage() {
 
       setCandidaturas(candidaturasData ?? [])
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar dados')
+      const msg = (err as { message?: string })?.message ?? 'Erro ao carregar dados'
+      setError(msg)
     } finally {
       setLoading(false)
     }
