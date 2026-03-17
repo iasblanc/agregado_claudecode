@@ -31,6 +31,7 @@ interface VagaJoined extends Pick<Vaga,
 
 interface CandidaturaParaAssinar {
   id: string
+  vaga_id: string
   status: string
   created_at: string
   vaga: VagaJoined | null
@@ -169,12 +170,22 @@ function SignModal({ candidatura, onClose, onSigned }: SignModalProps) {
         .update({ status: 'ativo', data_inicio: new Date().toISOString().split('T')[0] })
         .eq('candidatura_id', candidatura.id)
         .eq('status', 'pendente_assinatura')
+      // Decrement vagas_abertas (sem raça crítica: fetch then update)
+      if (candidatura.vaga_id) {
+        const { data: vagaData } = await supabase
+          .from('vagas').select('vagas_abertas').eq('id', candidatura.vaga_id).single()
+        if (vagaData && (vagaData.vagas_abertas ?? 0) > 0) {
+          await supabase.from('vagas')
+            .update({ vagas_abertas: (vagaData.vagas_abertas as number) - 1 })
+            .eq('id', candidatura.vaga_id)
+        }
+      }
       setStep(4)
       onSigned(candidatura.id)
     } finally {
       setSigning(false)
     }
-  }, [nome, cpf, hasSig, candidatura.id, onSigned])
+  }, [nome, cpf, hasSig, candidatura.id, candidatura.vaga_id, onSigned])
 
   const canAdvance3 = nome.trim().length > 2 && cpf.trim().length >= 11 && hasSig
 
@@ -607,7 +618,7 @@ export default function ContratosPage() {
 
     const [{ data: cands }, { data: ativs }, { data: encerrs }] = await Promise.all([
       supabase.from('candidaturas')
-        .select(`id, status, created_at, vaga:vagas(${vagaSelect})`)
+        .select(`id, vaga_id, status, created_at, vaga:vagas(${vagaSelect})`)
         .eq('agregado_id', user.id)
         .eq('status', 'em_formalizacao')
         .order('created_at', { ascending: false }),

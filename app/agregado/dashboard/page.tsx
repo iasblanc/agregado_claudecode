@@ -27,8 +27,10 @@ export default async function AgregadoDashboard() {
     { data: candidaturasPendentes },
     { data: avaliacoes },
     { count: veiculosCount },
+    { data: veiculos },
     { data: vagasRecentes },
     { data: documentos },
+    { data: custoConfig },
   ] = await Promise.all([
     supabase.from('profiles').select('nome, telefone').eq('id', user.id).single(),
     supabase.from('agregados').select('cpf, cnh').eq('id', user.id).maybeSingle(),
@@ -46,6 +48,7 @@ export default async function AgregadoDashboard() {
       .in('status', ['pendente', 'visualizado', 'em_negociacao']),
     supabase.from('avaliacoes').select('nota').eq('avaliado_id', user.id),
     supabase.from('veiculos').select('*', { count: 'exact', head: true }).eq('agregado_id', user.id),
+    supabase.from('veiculos').select('tipo').eq('agregado_id', user.id),
     supabase.from('vagas')
       .select('id, rota_origem, uf_origem, rota_destino, uf_destino, valor_km, km_estimado, frequencia_tipo, tipo_veiculo, transportadora:transportadoras(razao_social)')
       .eq('status', 'ativa')
@@ -54,6 +57,7 @@ export default async function AgregadoDashboard() {
     supabase.from('documentos')
       .select('id, tipo, status, data_validade')
       .eq('agregado_id', user.id),
+    supabase.from('custo_km_config').select('custo_km_calculado').eq('agregado_id', user.id).maybeSingle(),
   ])
 
   // KPIs
@@ -275,30 +279,69 @@ export default async function AgregadoDashboard() {
           <div className="space-y-2.5">
             {vagasRecentes!.map(vaga => {
               const estimativa = calcEstimativaMensal(vaga as unknown as Parameters<typeof calcEstimativaMensal>[0])
+              const custoKm = (custoConfig as { custo_km_calculado: number | null } | null)?.custo_km_calculado ?? null
+              const ganhoViagem = vaga.valor_km && vaga.km_estimado ? vaga.valor_km * vaga.km_estimado : null
+              const custoViagem = custoKm && vaga.km_estimado ? custoKm * vaga.km_estimado : null
+              const lucroViagem = ganhoViagem && custoViagem ? ganhoViagem - custoViagem : null
+              const margemPct = ganhoViagem && lucroViagem !== null ? (lucroViagem / ganhoViagem) * 100 : null
+              // Match score (simplified: type match 40% + has vehicle 25% + has custo 20% + base 15%)
+              const veicTipos = (veiculos ?? []).map((v: {tipo: string}) => v.tipo)
+              let matchScore = 15
+              if ((veiculosCount ?? 0) > 0) matchScore += 25
+              if (custoKm) matchScore += 20
+              if (vaga.tipo_veiculo && veicTipos.includes(vaga.tipo_veiculo)) matchScore += 40
+              else if ((veiculosCount ?? 0) > 0) matchScore += 10
+              matchScore = Math.min(matchScore, 99)
+              const matchColor = matchScore >= 80 ? 'text-success' : matchScore >= 60 ? 'text-warning' : 'text-text-muted'
               return (
                 <Link key={vaga.id} href={`/agregado/marketplace/${vaga.id}`}>
-                  <div className="bg-bg border border-border rounded-xl p-4 flex items-center gap-3">
-                    <MapPin size={16} className="text-text-muted flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-text-primary font-serif truncate">
-                        {vaga.rota_origem} → {vaga.rota_destino}
-                      </p>
-                      <p className="text-xs text-text-muted truncate">
-                        {(vaga.transportadora as unknown as { razao_social: string | null } | null)?.razao_social ?? 'Transportadora'}
-                        {vaga.tipo_veiculo ? ` · ${vaga.tipo_veiculo}` : ''}
-                      </p>
+                  <div className="bg-bg border border-border rounded-2xl p-4 relative overflow-hidden hover:border-accent/40 transition-colors">
+                    {/* Match % */}
+                    <div className="absolute top-3 right-4 text-right">
+                      <p className={`font-serif text-[22px] font-medium leading-none ${matchColor}`}>{matchScore}%</p>
+                      <p className="text-[9px] uppercase tracking-[.08em] text-text-muted mt-0.5">match</p>
                     </div>
-                    <div className="text-right flex-shrink-0">
+                    <p className="text-[10px] uppercase tracking-widest text-text-muted font-sans mb-0.5 pr-14">
+                      {(vaga.transportadora as unknown as { razao_social: string | null } | null)?.razao_social ?? 'Transportadora'}
+                    </p>
+                    <p className="font-serif text-[17px] font-medium text-text-primary leading-tight pr-14 mb-2">
+                      {[vaga.rota_origem, vaga.uf_origem].filter(Boolean).join('/')}
+                      {' → '}
+                      {[vaga.rota_destino, vaga.uf_destino].filter(Boolean).join('/')}
+                    </p>
+                    {/* Main metric */}
+                    <div className="flex items-baseline gap-2 mb-2.5">
                       {vaga.valor_km ? (
-                        <p className="font-serif text-[17px] font-medium text-success leading-none">
-                          {formatCurrency(vaga.valor_km)}/km
-                        </p>
-                      ) : estimativa ? (
-                        <p className="font-serif text-[15px] font-medium text-text-primary leading-none">
-                          {formatCurrency(estimativa)}/mês
+                        <p className="font-serif text-[24px] font-medium text-success leading-none">
+                          {formatCurrency(vaga.valor_km)}
                         </p>
                       ) : null}
+                      {vaga.valor_km && <span className="text-[11px] text-text-muted">/km</span>}
+                      {estimativa && (
+                        <span className="text-[13px] text-text-secondary font-sans">
+                          · {formatCurrency(estimativa)}/mês
+                        </span>
+                      )}
                     </div>
+                    {/* 3-metric grid */}
+                    {ganhoViagem && (
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <div className="bg-surface rounded-lg p-2 text-center">
+                          <p className="text-[9px] text-text-muted uppercase tracking-wide">R$/km</p>
+                          <p className="font-serif text-[13px] font-medium text-success">{vaga.valor_km ? formatCurrency(vaga.valor_km) : '—'}</p>
+                        </div>
+                        <div className="bg-surface rounded-lg p-2 text-center">
+                          <p className="text-[9px] text-text-muted uppercase tracking-wide">Ganho/viagem</p>
+                          <p className="font-serif text-[13px] font-medium text-text-primary">{formatCurrency(ganhoViagem)}</p>
+                        </div>
+                        <div className={`rounded-lg p-2 text-center ${margemPct !== null ? (margemPct >= 0 ? 'bg-success-light' : 'bg-danger-light') : 'bg-surface'}`}>
+                          <p className="text-[9px] text-text-muted uppercase tracking-wide">Margem</p>
+                          <p className={`font-serif text-[13px] font-medium ${margemPct !== null ? (margemPct >= 0 ? 'text-success' : 'text-danger') : 'text-text-muted'}`}>
+                            {margemPct !== null ? `${margemPct.toFixed(0)}%` : '—'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </Link>
               )

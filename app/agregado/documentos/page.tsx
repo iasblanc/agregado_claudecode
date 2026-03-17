@@ -371,6 +371,11 @@ export default function DocumentosPage() {
     )
   }
 
+  const totalDocs = TIPOS.length
+  const verificados = docs.filter(d => d.status === 'verificado').length
+  const progressPct = Math.round((verificados / totalDocs) * 100)
+  const docsEnviados = docs.length
+
   return (
     <div className="px-4 py-5 space-y-5">
       {/* Header */}
@@ -386,6 +391,61 @@ export default function DocumentosPage() {
           <Plus size={14} />
           Enviar
         </button>
+      </div>
+
+      {/* Summary hero card */}
+      <div className="bg-surface border border-border rounded-2xl p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+            totalVencido > 0 ? 'bg-danger-light' : totalVencendo > 0 ? 'bg-warning-light' : verificados === totalDocs ? 'bg-success-light' : 'bg-[#E8E3D8]'
+          }`}>
+            <FileText size={18} className={
+              totalVencido > 0 ? 'text-danger' : totalVencendo > 0 ? 'text-warning' : verificados === totalDocs ? 'text-success' : 'text-text-secondary'
+            } />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] uppercase tracking-[.1em] text-text-muted font-sans mb-0.5">Status documental</p>
+            <p className="text-[15px] font-medium text-text-primary font-sans">
+              {totalVencido > 0
+                ? `${totalVencido} documento${totalVencido > 1 ? 's' : ''} vencido${totalVencido > 1 ? 's' : ''}`
+                : totalVencendo > 0
+                ? `${totalVencendo} vence${totalVencendo > 1 ? 'm' : ''} em breve`
+                : verificados === totalDocs
+                ? 'Todos os documentos verificados'
+                : docsEnviados === 0
+                ? 'Nenhum documento enviado'
+                : `${verificados} de ${totalDocs} tipos verificados`}
+            </p>
+          </div>
+          <span className={`font-serif text-[22px] font-medium leading-none ${
+            totalVencido > 0 ? 'text-danger' : totalVencendo > 0 ? 'text-warning' : 'text-[#3A6B4A]'
+          }`}>
+            {progressPct}%
+          </span>
+        </div>
+        <div className="w-full h-1.5 bg-[#E0DAD0] rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${
+              totalVencido > 0 ? 'bg-danger' : totalVencendo > 0 ? 'bg-[#C8A84B]' : 'bg-[#3A6B4A]'
+            }`}
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+        <div className="flex gap-4 mt-2.5">
+          <span className="text-[11px] text-[#3A6B4A] flex items-center gap-1">
+            <CheckCircle2 size={11} /> {verificados} verificado{verificados !== 1 ? 's' : ''}
+          </span>
+          {totalPendente > 0 && (
+            <span className="text-[11px] text-[#C8A84B] flex items-center gap-1">
+              <Clock size={11} /> {totalPendente} pendente{totalPendente !== 1 ? 's' : ''}
+            </span>
+          )}
+          {totalVencido > 0 && (
+            <span className="text-[11px] text-danger flex items-center gap-1">
+              <AlertTriangle size={11} /> {totalVencido} vencido{totalVencido !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Alertas de compliance */}

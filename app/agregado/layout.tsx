@@ -4,50 +4,82 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
   LayoutDashboard, Calculator, Search, FileText, Star,
-  TrendingUp, BookUser, LogOut, Bell, MoreHorizontal, X, UserCircle, ShieldCheck,
+  TrendingUp, BookUser, LogOut, Bell, UserCircle, ShieldCheck,
+  Truck, Package, ChevronRight,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 
-// Sidebar principal (desktop + mobile drawer)
+// ── Itens de navegação ─────────────────────────────────────────────────────
 const primaryNav = [
-  { href: '/agregado/dashboard',    icon: LayoutDashboard, label: 'Início' },
-  { href: '/agregado/marketplace',  icon: Search,          label: 'Vagas' },
-  { href: '/agregado/contratos',    icon: FileText,        label: 'Contratos' },
-  { href: '/agregado/custo-km',     icon: Calculator,      label: 'Gestão de Custos' },
-  { href: '/agregado/gestao-negocio', icon: TrendingUp,    label: 'Gestão do Negócio' },
+  { href: '/agregado/dashboard',      label: 'Início',             Icon: LayoutDashboard },
+  { href: '/agregado/marketplace',    label: 'Vagas',              Icon: Search           },
+  { href: '/agregado/contratos',      label: 'Contratos',          Icon: FileText         },
+  { href: '/agregado/custo-km',       label: 'Gestão de Custos',   Icon: Calculator       },
+  { href: '/agregado/gestao-negocio', label: 'Gestão do Negócio',  Icon: TrendingUp       },
 ]
 
-const secondaryNav = [
-  { href: '/agregado/cadastros',    icon: BookUser,        label: 'Frota e Cadastros' },
-  { href: '/agregado/documentos',   icon: ShieldCheck,     label: 'Documentos' },
-  { href: '/agregado/avaliacoes',   icon: Star,            label: 'Avaliações' },
-  { href: '/agregado/minhas-candidaturas', icon: Search,   label: 'Minhas Candidaturas' },
-  { href: '/agregado/perfil',       icon: UserCircle,      label: 'Meu Perfil' },
+// Itens do drawer "Mais" (mobile) — organizados por grupo
+const maisGrupo1 = [
+  { href: '/agregado/perfil',      label: 'Meu Perfil',       sub: 'Dados, CNH, RNTRC',                Icon: UserCircle, bg: 'bg-[#E0DAD0]'                       },
+  { href: '/agregado/cadastros',   label: 'Minha Frota',      sub: 'Placa, documentos, seguro',        Icon: Truck,      bg: 'bg-[#E0DAD0]'                       },
+  { href: '/agregado/cadastros',   label: 'Equipamentos',     sub: 'Implementos e carretas',           Icon: Package,    bg: 'bg-[#E0DAD0]'                       },
+  { href: '/agregado/minhas-candidaturas', label: 'Minhas Candidaturas', sub: 'Status das candidaturas', Icon: Search, bg: 'bg-warning-light'                    },
+]
+const maisGrupo2 = [
+  { href: '/agregado/avaliacoes',  label: 'Avaliações',       sub: 'Sua reputação no marketplace',    Icon: Star,       bg: 'bg-gold-light'                      },
+  { href: '/agregado/gestao-negocio', label: 'Gestão do Negócio', sub: 'Fluxo de caixa, DRE, por placa', Icon: TrendingUp, bg: 'bg-success-light'                },
+  { href: '/agregado/documentos',  label: 'Documentos',       sub: 'Validade e uploads',              Icon: ShieldCheck, bg: 'bg-[#E0DAD0]'                      },
 ]
 
-// Bottom nav mobile: 4 principais + "Mais" drawer
-const mobileMainNav = primaryNav.slice(0, 4)
+// Bottom nav mobile — 4 itens + "Mais"
+const bottomNav = [
+  { href: '/agregado/dashboard',   label: 'Início',     Icon: LayoutDashboard },
+  { href: '/agregado/marketplace', label: 'Vagas',      Icon: Search           },
+  { href: '/agregado/contratos',   label: 'Contratos',  Icon: FileText         },
+  { href: '/agregado/custo-km',    label: 'Custos',     Icon: Calculator       },
+]
+
+// Desktop sidebar secondary
+const sidebarSecondary = [
+  { href: '/agregado/perfil',             label: 'Meu Perfil',           Icon: UserCircle },
+  { href: '/agregado/cadastros',          label: 'Frota e Cadastros',    Icon: Truck      },
+  { href: '/agregado/documentos',         label: 'Documentos',           Icon: ShieldCheck },
+  { href: '/agregado/avaliacoes',         label: 'Avaliações',           Icon: Star       },
+  { href: '/agregado/minhas-candidaturas',label: 'Candidaturas',         Icon: BookUser   },
+]
 
 export default function AgregadoLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const router = useRouter()
+  const router   = useRouter()
+
   const [pendentesCount, setPendentesCount] = useState(0)
-  const [maisOpen, setMaisOpen] = useState(false)
+  const [maisOpen, setMaisOpen]             = useState(false)
+  const [userName, setUserName]             = useState('')
+  const [userInitials, setUserInitials]     = useState('A')
+  const [tipoAgregado, setTipoAgregado]     = useState<'TAC' | 'ETC'>('TAC')
 
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return
-      const { count } = await supabase
-        .from('candidaturas')
-        .select('*', { count: 'exact', head: true })
-        .eq('agregado_id', user.id)
-        .eq('status', 'em_formalizacao')
+      const [{ count }, { data: prof }, { data: agr }] = await Promise.all([
+        supabase.from('candidaturas').select('*', { count: 'exact', head: true }).eq('agregado_id', user.id).eq('status', 'em_formalizacao'),
+        supabase.from('profiles').select('nome').eq('id', user.id).single(),
+        supabase.from('agregados').select('tipo_agregado').eq('id', user.id).single(),
+      ])
       setPendentesCount(count ?? 0)
+      if (prof?.nome) {
+        const nome = prof.nome as string
+        setUserName(nome.split(' ')[0])
+        setUserInitials(
+          nome.split(' ').filter(Boolean).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+        )
+      }
+      const tipo = (agr as Record<string, string> | null)?.tipo_agregado
+      if (tipo === 'ETC') setTipoAgregado('ETC')
     })
   }, [pathname])
 
-  // Close mobile drawer on route change
   useEffect(() => { setMaisOpen(false) }, [pathname])
 
   async function handleLogout() {
@@ -63,196 +95,232 @@ export default function AgregadoLayout({ children }: { children: React.ReactNode
 
   return (
     <div className="min-h-screen bg-bg flex flex-col md:flex-row">
-      {/* ── Desktop Sidebar ──────────────────────────────────── */}
-      <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 md:w-60 bg-surface border-r border-border z-40">
+
+      {/* ══════════════════════════════════════════════════════════
+          DESKTOP SIDEBAR
+      ══════════════════════════════════════════════════════════ */}
+      <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 md:w-60 bg-bg border-r border-border z-40">
         {/* Logo */}
-        <div className="h-16 flex items-center gap-2.5 px-5 border-b border-border flex-shrink-0">
-          <img src="/logo.svg" alt="Agregado.Pro" className="h-7 w-auto" />
-          <div>
-            <span className="font-serif font-semibold text-text-primary text-sm leading-none block">Agregado.Pro</span>
-            <span className="text-[10px] text-text-muted font-sans">Agregado</span>
-          </div>
+        <div className="h-14 flex items-center gap-2.5 px-5 border-b border-border flex-shrink-0">
+          <span className="font-serif font-medium text-text-primary text-[17px] tracking-[-0.01em]">
+            Agregado <em className="italic text-text-secondary">Pro</em>
+          </span>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 overflow-y-auto">
-          <p className="text-[10px] font-sans uppercase tracking-widest text-text-muted px-2 mb-2">Menu</p>
-          <ul className="space-y-1">
-            {primaryNav.map(({ href, icon: Icon, label }) => {
-              const active = isActive(href)
-              const isContratos = href === '/agregado/contratos'
-              return (
-                <li key={href}>
-                  <Link
-                    href={href}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-sans transition-colors relative ${
-                      active
-                        ? 'bg-accent text-bg font-medium'
-                        : 'text-text-secondary hover:bg-[#E0DAD0] hover:text-text-primary'
-                    }`}
-                  >
-                    <Icon size={16} strokeWidth={active ? 2.5 : 1.8} />
-                    {label}
-                    {isContratos && pendentesCount > 0 && (
-                      <span className="ml-auto min-w-[18px] h-[18px] bg-warning text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1">
-                        {pendentesCount}
-                      </span>
-                    )}
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-
-          <p className="text-[10px] font-sans uppercase tracking-widest text-text-muted px-2 mb-2 mt-5">Minha área</p>
-          <ul className="space-y-1">
-            {secondaryNav.map(({ href, icon: Icon, label }) => {
-              const active = isActive(href)
-              return (
-                <li key={href}>
-                  <Link
-                    href={href}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-sans transition-colors ${
-                      active
-                        ? 'bg-accent text-bg font-medium'
-                        : 'text-text-secondary hover:bg-[#E0DAD0] hover:text-text-primary'
-                    }`}
-                  >
-                    <Icon size={16} strokeWidth={active ? 2.5 : 1.8} />
-                    {label}
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        </nav>
-
-        {/* Notificações + Logout */}
-        <div className="px-3 py-4 border-t border-border space-y-1">
-          <button className="flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm font-sans text-text-secondary hover:bg-[#E0DAD0] transition-colors">
-            <Bell size={16} strokeWidth={1.8} />
-            Notificações
-          </button>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm font-sans text-text-secondary hover:bg-[#E0DAD0] hover:text-danger transition-colors"
-          >
-            <LogOut size={16} strokeWidth={1.8} />
-            Sair
-          </button>
-        </div>
-      </aside>
-
-      {/* ── Mobile Header ────────────────────────────────────── */}
-      <header className="md:hidden sticky top-0 z-40 bg-bg/95 backdrop-blur border-b border-border">
-        <div className="px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src="/logo.svg" alt="Agregado.Pro" className="h-7 w-auto" />
-            <span className="font-serif font-medium text-text-primary">
-              Agregado<em className="italic text-text-secondary">.Pro</em>
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <button className="relative p-2 rounded-full border border-border bg-bg hover:bg-surface text-text-muted transition-colors">
-              <Bell size={16} />
-            </button>
-            <button onClick={handleLogout} className="p-2 rounded-md hover:bg-surface text-text-muted transition-colors">
-              <LogOut size={16} />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* ── Main content ─────────────────────────────────────── */}
-      <main className="flex-1 md:ml-60 min-h-screen">
-        <div className="max-w-3xl mx-auto px-0 pb-24 md:pb-8">
-          {children}
-        </div>
-      </main>
-
-      {/* ── Mobile Bottom Navigation ─────────────────────────── */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-bg/97 backdrop-blur border-t border-border">
-        <div className="px-1 h-16 flex items-center justify-around">
-          {mobileMainNav.map(({ href, icon: Icon, label }) => {
+        {/* Primary nav */}
+        <nav className="flex-1 px-0 py-2 overflow-y-auto">
+          {primaryNav.map(({ href, label, Icon }) => {
             const active = isActive(href)
             const isContratos = href === '/agregado/contratos'
             return (
               <Link
                 key={href}
                 href={href}
-                className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition-colors relative ${
-                  active ? 'text-accent' : 'text-text-muted hover:text-text-secondary'
+                className={`flex items-center gap-3 px-5 py-[11px] text-[13px] font-sans transition-colors relative w-full ${
+                  active ? 'bg-surface text-accent font-semibold' : 'text-text-primary hover:bg-surface'
                 }`}
               >
-                <div className="relative">
-                  <Icon size={20} strokeWidth={active ? 2.5 : 1.5} />
-                  {isContratos && pendentesCount > 0 && (
-                    <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 bg-warning text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 border-[1.5px] border-bg">
-                      {pendentesCount}
-                    </span>
-                  )}
-                </div>
-                <span className={`text-[10px] font-sans ${active ? 'font-semibold' : 'font-normal'}`}>{label}</span>
+                <Icon size={18} strokeWidth={active ? 2.2 : 1.6} />
+                {label}
+                {isContratos && pendentesCount > 0 && (
+                  <span className="ml-auto min-w-[18px] h-[18px] bg-[#C26B3A] text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1">
+                    {pendentesCount}
+                  </span>
+                )}
               </Link>
             )
           })}
-          {/* Mais button */}
+
+          <div className="my-2 mx-4 h-px bg-border" />
+
+          {sidebarSecondary.map(({ href, label, Icon }) => {
+            const active = isActive(href)
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`flex items-center gap-3 px-5 py-[11px] text-[13px] font-sans transition-colors ${
+                  active ? 'bg-surface text-accent font-semibold' : 'text-text-primary hover:bg-surface'
+                }`}
+              >
+                <Icon size={18} strokeWidth={active ? 2.2 : 1.6} />
+                {label}
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Logout */}
+        <div className="px-0 py-2 border-t border-border">
           <button
-            onClick={() => setMaisOpen(true)}
-            className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition-colors ${
-              maisOpen ? 'text-accent' : 'text-text-muted hover:text-text-secondary'
-            }`}
+            onClick={handleLogout}
+            className="flex items-center gap-3 w-full px-5 py-[11px] text-[13px] font-sans text-text-secondary hover:bg-surface hover:text-danger transition-colors"
           >
-            <MoreHorizontal size={20} strokeWidth={1.5} />
-            <span className="text-[10px] font-sans font-normal">Mais</span>
+            <LogOut size={18} strokeWidth={1.6} />
+            Sair
           </button>
         </div>
+      </aside>
+
+      {/* ══════════════════════════════════════════════════════════
+          MOBILE TOPBAR
+      ══════════════════════════════════════════════════════════ */}
+      <header className="md:hidden sticky top-0 z-40 h-14 bg-bg/95 backdrop-blur-[16px] border-b border-border flex items-center justify-between px-4 gap-3">
+        {/* Logo */}
+        <div className="font-serif text-[17px] font-medium tracking-[-0.01em] text-text-primary min-w-0">
+          Agregado <em className="italic text-text-secondary">Pro</em>
+        </div>
+
+        {/* Right actions */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Notification bell */}
+          <button className="relative w-9 h-9 rounded-full border border-border bg-bg flex items-center justify-center text-text-secondary">
+            <Bell size={15} strokeWidth={1.8} />
+            {/* Unread dot — mostrar quando houver notifs não lidas */}
+          </button>
+
+          {/* User pill */}
+          <button
+            onClick={() => router.push('/agregado/perfil')}
+            className="flex items-center gap-2 px-3 py-[5px] border border-border rounded-full bg-bg cursor-pointer"
+          >
+            <div className="w-7 h-7 rounded-full bg-[#2D2B26] text-[#F5F2EC] flex items-center justify-center font-serif text-[11px] font-medium flex-shrink-0">
+              {userInitials}
+            </div>
+            <span className="text-[12px] font-medium text-text-primary font-sans">{userName || 'Perfil'}</span>
+            <span className={`text-[9px] font-semibold tracking-[.1em] uppercase px-2 py-[3px] rounded-full flex-shrink-0 ${
+              tipoAgregado === 'ETC'
+                ? 'bg-[rgba(58,79,107,.1)] text-[#3A4F6B] border border-[rgba(58,79,107,.2)]'
+                : 'bg-[rgba(194,107,58,.1)] text-[#C26B3A] border border-[rgba(194,107,58,.25)]'
+            }`}>
+              {tipoAgregado}
+            </span>
+          </button>
+        </div>
+      </header>
+
+      {/* ══════════════════════════════════════════════════════════
+          MAIN CONTENT
+      ══════════════════════════════════════════════════════════ */}
+      <main className="flex-1 md:ml-60 min-h-screen">
+        <div className="max-w-3xl mx-auto px-0 pb-24 md:pb-8">
+          {children}
+        </div>
+      </main>
+
+      {/* ══════════════════════════════════════════════════════════
+          MOBILE BOTTOM NAV
+      ══════════════════════════════════════════════════════════ */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-16 pb-[env(safe-area-inset-bottom)] bg-bg/97 backdrop-blur-[16px] border-t border-border flex">
+        {bottomNav.map(({ href, label, Icon }) => {
+          const active = isActive(href)
+          const isContratos = href === '/agregado/contratos'
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={`flex-1 flex flex-col items-center justify-center gap-[3px] text-[9px] font-medium tracking-[.06em] uppercase font-sans relative transition-colors ${
+                active ? 'text-[#2D2B26]' : 'text-[#9C988E] hover:text-text-secondary'
+              }`}
+            >
+              <div className="relative">
+                <Icon size={20} strokeWidth={active ? 2.2 : 1.5} />
+                {isContratos && pendentesCount > 0 && (
+                  <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 bg-[#C26B3A] text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 border-[1.5px] border-bg">
+                    {pendentesCount}
+                  </span>
+                )}
+              </div>
+              {label}
+            </Link>
+          )
+        })}
+
+        {/* Mais */}
+        <button
+          onClick={() => setMaisOpen(true)}
+          className={`flex-1 flex flex-col items-center justify-center gap-[3px] text-[9px] font-medium tracking-[.06em] uppercase font-sans transition-colors ${
+            maisOpen ? 'text-[#2D2B26]' : 'text-[#9C988E]'
+          }`}
+        >
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={maisOpen ? 2.2 : 1.5}>
+            <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
+          </svg>
+          Mais
+        </button>
       </nav>
 
-      {/* ── "Mais" Drawer (mobile) ───────────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════
+          MOBILE "MAIS" DRAWER
+      ══════════════════════════════════════════════════════════ */}
       {maisOpen && (
         <div
-          className="md:hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end"
+          className="md:hidden fixed inset-0 z-50 bg-[rgba(26,25,21,.4)] backdrop-blur-[4px] flex items-end"
           onClick={() => setMaisOpen(false)}
         >
           <div
-            className="bg-bg w-full rounded-t-2xl p-5 pb-8 shadow-xl"
+            className="bg-bg w-full rounded-t-[24px] pb-[env(safe-area-inset-bottom)] shadow-xl"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-4">
-              <p className="font-serif text-base font-semibold text-text-primary">Mais opções</p>
-              <button onClick={() => setMaisOpen(false)} className="p-1.5 rounded-lg hover:bg-surface text-text-muted">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="space-y-1">
-              {/* 5th primary nav item + secondary nav */}
-              {[primaryNav[4], ...secondaryNav].map(({ href, icon: Icon, label }) => {
-                const active = isActive(href)
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={() => setMaisOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-sans transition-colors ${
-                      active
-                        ? 'bg-accent/10 text-accent font-medium'
-                        : 'text-text-secondary hover:bg-surface'
-                    }`}
-                  >
-                    <Icon size={18} strokeWidth={active ? 2.5 : 1.8} />
-                    {label}
-                  </Link>
-                )
-              })}
-              <button
-                onClick={() => { setMaisOpen(false); handleLogout() }}
-                className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-sm font-sans text-danger hover:bg-danger-light transition-colors"
+            {/* Handle */}
+            <div className="w-9 h-1 rounded-full bg-border mx-auto mt-2 mb-3.5" />
+
+            {/* Grupo 1 */}
+            {maisGrupo1.map(({ href, label, sub, Icon, bg }) => (
+              <Link
+                key={`${href}-${label}`}
+                href={href}
+                onClick={() => setMaisOpen(false)}
+                className="flex items-center gap-3.5 px-5 py-3.5 hover:bg-surface transition-colors"
               >
-                <LogOut size={18} strokeWidth={1.8} />
-                Sair da conta
-              </button>
-            </div>
+                <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}>
+                  <Icon size={18} className="text-text-secondary" strokeWidth={1.6} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[15px] font-medium text-text-primary font-sans">{label}</p>
+                  <p className="text-[11px] text-text-muted font-sans mt-[1px]">{sub}</p>
+                </div>
+                <ChevronRight size={14} className="text-text-muted flex-shrink-0" />
+              </Link>
+            ))}
+
+            {/* Divider */}
+            <div className="my-1.5 mx-0 h-px bg-border" />
+
+            {/* Grupo 2 */}
+            {maisGrupo2.map(({ href, label, sub, Icon, bg }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setMaisOpen(false)}
+                className="flex items-center gap-3.5 px-5 py-3.5 hover:bg-surface transition-colors"
+              >
+                <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}>
+                  <Icon size={18} className="text-text-secondary" strokeWidth={1.6} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[15px] font-medium text-text-primary font-sans">{label}</p>
+                  <p className="text-[11px] text-text-muted font-sans mt-[1px]">{sub}</p>
+                </div>
+                <ChevronRight size={14} className="text-text-muted flex-shrink-0" />
+              </Link>
+            ))}
+
+            {/* Divider + Sair */}
+            <div className="my-1.5 mx-0 h-px bg-border" />
+            <button
+              onClick={() => { setMaisOpen(false); handleLogout() }}
+              className="flex items-center gap-3.5 px-5 py-3.5 w-full hover:bg-surface transition-colors"
+            >
+              <div className="w-10 h-10 rounded-xl bg-danger-light flex items-center justify-center flex-shrink-0">
+                <LogOut size={18} className="text-danger" strokeWidth={1.6} />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-[15px] font-medium text-danger font-sans">Sair da conta</p>
+              </div>
+            </button>
+
+            <div className="h-4" />
           </div>
         </div>
       )}

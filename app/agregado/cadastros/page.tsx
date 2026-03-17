@@ -6,7 +6,17 @@ import { Input, Select } from '@/components/ui/Input'
 import Modal from '@/components/ui/Modal'
 import Badge from '@/components/ui/Badge'
 import { TIPOS_VEICULO, TIPOS_EQUIPAMENTO, type Veiculo, type Equipamento, type Motorista } from '@/lib/types'
-import { Plus, Trash2, Truck, Package, User } from 'lucide-react'
+import { Plus, Trash2, Truck, Package, User, AlertTriangle, CheckCircle2 } from 'lucide-react'
+
+function docBadge(dateStr: string | null | undefined) {
+  if (!dateStr) return null
+  const d = new Date(dateStr)
+  const now = new Date()
+  const days = Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  if (days < 0) return { label: 'Vencido', cls: 'bg-danger-light text-danger' }
+  if (days <= 30) return { label: `Vence em ${days}d`, cls: 'bg-warning-light text-warning' }
+  return { label: 'OK', cls: 'bg-success-light text-success' }
+}
 
 type Tab = 'veiculos' | 'equipamentos' | 'motoristas'
 
@@ -26,6 +36,9 @@ export default function CadastrosPage() {
   const [vPlaca, setVPlaca] = useState('')
   const [vAno, setVAno] = useState('')
   const [vValor, setVValor] = useState('')
+  const [vModelo, setVModelo] = useState('')
+  const [vCrlvVenc, setVCrlvVenc] = useState('')
+  const [vSeguroVenc, setVSeguroVenc] = useState('')
 
   // Equipment form
   const [eTipo, setETipo] = useState<string>(TIPOS_EQUIPAMENTO[0])
@@ -85,6 +98,9 @@ export default function CadastrosPage() {
     setVPlaca('')
     setVAno('')
     setVValor('')
+    setVModelo('')
+    setVCrlvVenc('')
+    setVSeguroVenc('')
     setETipo(TIPOS_EQUIPAMENTO[0])
     setEPlaca('')
     setEAno('')
@@ -109,6 +125,9 @@ export default function CadastrosPage() {
           placa: vPlaca.trim().toUpperCase(),
           ano: vAno ? parseInt(vAno) : null,
           valor_veiculo: vValor ? parseFloat(vValor.replace(',', '.')) : null,
+          modelo: vModelo.trim() || null,
+          crlv_venc: vCrlvVenc || null,
+          seguro_venc: vSeguroVenc || null,
         })
         if (!error) {
           await fetchVeiculos(userId)
@@ -228,35 +247,60 @@ export default function CadastrosPage() {
               {veiculos.length === 0 ? (
                 <EmptyState icon={<Truck size={32} />} text="Nenhum veículo cadastrado" />
               ) : (
-                veiculos.map(v => (
-                  <div key={v.id} className="flex items-center justify-between bg-surface border border-border rounded-xl px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center">
-                        <Truck size={18} className="text-accent" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-text-primary text-sm font-sans">{v.placa}</span>
-                          <Badge variant="muted">{v.tipo}</Badge>
+                veiculos.map(v => {
+                  const vv = v as Veiculo & { modelo?: string; crlv_venc?: string; seguro_venc?: string }
+                  const crlvBadge = docBadge(vv.crlv_venc)
+                  const seguroBadge = docBadge(vv.seguro_venc)
+                  return (
+                    <div key={v.id} className="bg-surface border border-border rounded-xl px-4 py-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                            <Truck size={18} className="text-accent" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-text-primary text-sm font-sans">{v.placa}</span>
+                              <Badge variant="muted">{v.tipo}</Badge>
+                            </div>
+                            <div className="text-xs text-text-muted font-sans mt-0.5">
+                              {vv.modelo ? `${vv.modelo} · ` : ''}
+                              {v.ano ? `Ano ${v.ano}` : ''}
+                              {v.ano && v.valor_veiculo ? ' · ' : ''}
+                              {v.valor_veiculo
+                                ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v.valor_veiculo)
+                                : ''}
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-xs text-text-muted font-sans mt-0.5">
-                          {v.ano ? `Ano ${v.ano}` : ''}
-                          {v.ano && v.valor_veiculo ? ' · ' : ''}
-                          {v.valor_veiculo
-                            ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v.valor_veiculo)
-                            : ''}
-                        </div>
+                        <button
+                          onClick={() => handleDelete(v.id)}
+                          disabled={deletingId === v.id}
+                          className="p-2 rounded-lg hover:bg-danger-light text-text-muted hover:text-danger transition-colors disabled:opacity-50 shrink-0"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
+                      {/* Doc badges */}
+                      {(crlvBadge || seguroBadge) && (
+                        <div className="flex gap-2 mt-2.5 flex-wrap">
+                          {crlvBadge && (
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${crlvBadge.cls}`}>
+                              {crlvBadge.label === 'OK' ? <CheckCircle2 size={10} /> : <AlertTriangle size={10} />}
+                              CRLV {crlvBadge.label}
+                            </span>
+                          )}
+                          {seguroBadge && (
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${seguroBadge.cls}`}>
+                              {seguroBadge.label === 'OK' ? <CheckCircle2 size={10} /> : <AlertTriangle size={10} />}
+                              Seguro {seguroBadge.label}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <button
-                      onClick={() => handleDelete(v.id)}
-                      disabled={deletingId === v.id}
-                      className="p-2 rounded-lg hover:bg-danger-light text-text-muted hover:text-danger transition-colors disabled:opacity-50 shrink-0"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))
+                  )
+                })
               )}
             </>
           )}
@@ -367,6 +411,24 @@ export default function CadastrosPage() {
                 onChange={e => setVValor(e.target.value)}
                 min={0}
                 step={0.01}
+              />
+              <Input
+                label="Modelo (opcional)"
+                placeholder="Ex: Scania R450"
+                value={vModelo}
+                onChange={e => setVModelo(e.target.value)}
+              />
+              <Input
+                label="Vencimento CRLV"
+                type="date"
+                value={vCrlvVenc}
+                onChange={e => setVCrlvVenc(e.target.value)}
+              />
+              <Input
+                label="Vencimento Seguro"
+                type="date"
+                value={vSeguroVenc}
+                onChange={e => setVSeguroVenc(e.target.value)}
               />
             </>
           )}
