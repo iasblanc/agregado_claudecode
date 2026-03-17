@@ -386,6 +386,7 @@ export default function MarketplaceAgregadoPage() {
                   )}
                   {vaga.tipo_veiculo && <Badge variant="light">{vaga.tipo_veiculo}</Badge>}
                   {vaga.tipo_carga && <Badge variant="muted">{vaga.tipo_carga}</Badge>}
+                  {vaga.frequencia_tipo && <Badge variant="muted">{labelFrequencia(vaga)}</Badge>}
                   {vaga.contrata_equipamento && <Badge variant="info">+ Equipamento</Badge>}
                 </div>
 
@@ -431,11 +432,8 @@ export default function MarketplaceAgregadoPage() {
                   </div>
                 )}
 
-                {/* Frequência + análise */}
-                <div className="flex items-center justify-between mb-3">
-                  {vaga.frequencia_tipo && (
-                    <p className="text-xs text-text-muted">{labelFrequencia(vaga)}</p>
-                  )}
+                {/* Análise financeira */}
+                <div className="flex items-center justify-end mb-3">
                   <Badge variant={analise.variant}>{analise.label}</Badge>
                 </div>
 

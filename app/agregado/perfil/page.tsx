@@ -267,17 +267,26 @@ export default function PerfilPage() {
               style={{ width: `${completionPct}%` }}
             />
           </div>
-          {completionPct < 100 && (
-            <div className="mt-2.5 space-y-1">
-              {CHECKLIST.filter(item => !item.check(profile)).slice(0, 3).map(item => (
-                <div key={item.key} className="flex items-center gap-2 text-[11px] text-text-muted">
-                  <div className="w-3.5 h-3.5 rounded-full border border-border flex-shrink-0" />
-                  <span>{item.label}</span>
-                  <ChevronRight size={10} className="ml-auto" />
+          <div className="mt-3 space-y-1.5">
+            {CHECKLIST.map(item => {
+              const done = item.check(profile)
+              return (
+                <div key={item.key} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-colors ${
+                  done
+                    ? 'bg-[rgba(58,107,74,.08)] border-[rgba(58,107,74,.18)]'
+                    : 'bg-[rgba(194,107,58,.07)] border-[rgba(194,107,58,.18)]'
+                }`}>
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-semibold flex-shrink-0 ${
+                    done ? 'bg-[#3A6B4A] text-white' : 'bg-[#C26B3A] text-white'
+                  }`}>
+                    {done ? '✓' : '!'}
+                  </div>
+                  <span className="text-[13px] font-medium text-text-primary font-sans flex-1">{item.label}</span>
+                  {!done && <span className="text-[11px] text-[#C26B3A] font-sans flex-shrink-0">Preencher →</span>}
                 </div>
-              ))}
-            </div>
-          )}
+              )
+            })}
+          </div>
           {completionPct === 100 && (
             <div className="flex items-center gap-1.5 mt-2 text-[11px] text-[#3A6B4A]">
               <CheckCircle2 size={13} className="fill-[#3A6B4A] text-white" />

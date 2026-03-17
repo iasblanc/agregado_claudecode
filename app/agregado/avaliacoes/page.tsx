@@ -100,7 +100,7 @@ type SubTab = 'encerrados' | 'recebidas' | 'feitas'
 
 export default function AvaliacoesAgregadoPage() {
   const router = useRouter()
-  const [subTab, setSubTab] = useState<SubTab>('encerrados')
+  const [subTab, setSubTab] = useState<SubTab>('recebidas')
   const [encerrados, setEncerrados] = useState<ContratoEncerrado[]>([])
   const [recebidas, setRecebidas] = useState<Avaliacao[]>([])
   const [feitas, setFeitas] = useState<Avaliacao[]>([])
@@ -217,8 +217,8 @@ export default function AvaliacoesAgregadoPage() {
       {/* Sub-tabs */}
       <div className="flex overflow-x-auto border-b border-border gap-0">
         {([
-          { key: 'encerrados' as const, label: 'Avaliar transportadoras', count: encerrados.filter(c => !enviados.has(c.id)).length },
-          { key: 'recebidas' as const, label: 'Avaliações recebidas', count: 0 },
+          { key: 'recebidas' as const, label: 'Recebidas', count: 0 },
+          { key: 'encerrados' as const, label: 'Para avaliar', count: encerrados.filter(c => !enviados.has(c.id)).length },
           { key: 'feitas' as const, label: 'Minhas avaliações', count: 0 },
         ]).map(t => (
           <button
