@@ -20,10 +20,10 @@ const primaryNav = [
 
 // Itens do drawer "Mais" (mobile) — organizados por grupo
 const maisGrupo1 = [
-  { href: '/agregado/perfil',      label: 'Meu Perfil',       sub: 'Dados, CNH, RNTRC',                Icon: UserCircle, bg: 'bg-[#E0DAD0]'                       },
-  { href: '/agregado/cadastros',   label: 'Minha Frota',      sub: 'Placa, documentos, seguro',        Icon: Truck,      bg: 'bg-[#E0DAD0]'                       },
-  { href: '/agregado/cadastros',   label: 'Equipamentos',     sub: 'Implementos e carretas',           Icon: Package,    bg: 'bg-[#E0DAD0]'                       },
-  { href: '/agregado/minhas-candidaturas', label: 'Minhas Candidaturas', sub: 'Status das candidaturas', Icon: Search, bg: 'bg-warning-light'                    },
+  { href: '/agregado/perfil',    label: 'Meu Perfil',   sub: 'Dados, CNH, RNTRC',         Icon: UserCircle, bg: 'bg-[#E0DAD0]'    },
+  { href: '/agregado/cadastros', label: 'Minha Frota',  sub: 'Placa, documentos, seguro',  Icon: Truck,      bg: 'bg-[#E0DAD0]'    },
+  { href: '/agregado/cadastros', label: 'Equipamentos', sub: 'Implementos e carretas',     Icon: Package,    bg: 'bg-[#E0DAD0]'    },
+  { href: '/agregado/contratos', label: 'Candidaturas', sub: 'Status e evolução das candidaturas', Icon: Search, bg: 'bg-warning-light' },
 ]
 const maisGrupo2 = [
   { href: '/agregado/avaliacoes',  label: 'Avaliações',       sub: 'Sua reputação no marketplace',    Icon: Star,       bg: 'bg-gold-light'                      },
@@ -41,11 +41,10 @@ const bottomNav = [
 
 // Desktop sidebar secondary
 const sidebarSecondary = [
-  { href: '/agregado/perfil',             label: 'Meu Perfil',           Icon: UserCircle },
-  { href: '/agregado/cadastros',          label: 'Frota e Cadastros',    Icon: Truck      },
-  { href: '/agregado/documentos',         label: 'Documentos',           Icon: ShieldCheck },
-  { href: '/agregado/avaliacoes',         label: 'Avaliações',           Icon: Star       },
-  { href: '/agregado/minhas-candidaturas',label: 'Candidaturas',         Icon: BookUser   },
+  { href: '/agregado/perfil',    label: 'Meu Perfil',        Icon: UserCircle },
+  { href: '/agregado/cadastros', label: 'Frota e Cadastros', Icon: Truck      },
+  { href: '/agregado/documentos',label: 'Documentos',        Icon: ShieldCheck },
+  { href: '/agregado/avaliacoes',label: 'Avaliações',        Icon: Star       },
 ]
 
 export default function AgregadoLayout({ children }: { children: React.ReactNode }) {
