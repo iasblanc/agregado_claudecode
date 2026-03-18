@@ -12,7 +12,7 @@ import {
 import {
   Plus, Trash2, Truck, Package, User,
   AlertTriangle, CheckCircle2, Camera, X,
-  Phone, CreditCard, Weight,
+  Phone, CreditCard, Weight, CheckCircle, XCircle,
 } from 'lucide-react'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -139,6 +139,12 @@ export default function CadastrosPage() {
   const [modalOpen, setModalOpen]   = useState(false)
   const [saving, setSaving]         = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [toast, setToast]           = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+
+  function showToast(type: 'success' | 'error', msg: string) {
+    setToast({ type, msg })
+    setTimeout(() => setToast(null), 4000)
+  }
 
   // ── Vehicle form ──────────────────────────────────────────────────────────
   const [vTipo,      setVTipo]      = useState<string>(TIPOS_VEICULO[0])
@@ -215,7 +221,10 @@ export default function CadastrosPage() {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
     const fullPath = `${path}.${ext}`
     const { error } = await supabase.storage.from('frota-fotos').upload(fullPath, file, { upsert: true })
-    if (error) return null
+    if (error) {
+      console.error('Erro upload foto:', error.message)
+      return null
+    }
     const { data } = supabase.storage.from('frota-fotos').getPublicUrl(fullPath)
     return data.publicUrl
   }
@@ -239,7 +248,11 @@ export default function CadastrosPage() {
           crlv_venc:   vCrlvVenc || null,
           seguro_venc: vSeguroVenc || null,
         }).select().single()
-        if (!error && data) {
+        if (error) {
+          showToast('error', `Erro ao salvar veículo: ${error.message}`)
+          return
+        }
+        if (data) {
           // Upload up to 4 fotos
           if (vFotos.length > 0) {
             const urls: string[] = []
@@ -253,6 +266,7 @@ export default function CadastrosPage() {
           }
           await fetchVeiculos(userId)
           setModalOpen(false)
+          showToast('success', 'Veículo cadastrado com sucesso!')
         }
 
       } else if (activeTab === 'equipamentos') {
@@ -265,13 +279,18 @@ export default function CadastrosPage() {
           tara:        eTara ? parseFloat(eTara.replace(',', '.')) : null,
           crlv_venc:   eCrlvVenc || null,
         }).select().single()
-        if (!error && data) {
+        if (error) {
+          showToast('error', `Erro ao salvar equipamento: ${error.message}`)
+          return
+        }
+        if (data) {
           if (eFoto.length > 0) {
             const url = await uploadFoto(eFoto[0], `${userId}/equipamentos/${data.id}/foto`)
             if (url) await supabase.from('equipamentos').update({ foto_url: url }).eq('id', data.id)
           }
           await fetchEquipamentos(userId)
           setModalOpen(false)
+          showToast('success', 'Equipamento cadastrado com sucesso!')
         }
 
       } else {
@@ -284,13 +303,18 @@ export default function CadastrosPage() {
           cnh_categoria: mCnhCategoria || null,
           cnh_venc:      mCnhVenc || null,
         }).select().single()
-        if (!error && data) {
+        if (error) {
+          showToast('error', `Erro ao salvar motorista: ${error.message}`)
+          return
+        }
+        if (data) {
           if (mFoto.length > 0) {
             const url = await uploadFoto(mFoto[0], `${userId}/motoristas/${data.id}/foto`)
             if (url) await supabase.from('motoristas').update({ foto_url: url }).eq('id', data.id)
           }
           await fetchMotoristas(userId)
           setModalOpen(false)
+          showToast('success', 'Motorista cadastrado com sucesso!')
         }
       }
     } finally {
@@ -331,6 +355,21 @@ export default function CadastrosPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-5">
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-sm font-sans font-medium transition-all duration-300 ${
+          toast.type === 'success'
+            ? 'bg-success text-white'
+            : 'bg-danger text-white'
+        }`}>
+          {toast.type === 'success'
+            ? <CheckCircle size={16} />
+            : <XCircle size={16} />
+          }
+          {toast.msg}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
