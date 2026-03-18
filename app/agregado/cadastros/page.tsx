@@ -253,11 +253,11 @@ export default function CadastrosPage() {
   }
 
   // ── Upload helper ─────────────────────────────────────────────────────────
-  async function uploadFoto(file: File, path: string): Promise<string | null> {
+  async function uploadFoto(file: File, path: string): Promise<string> {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
     const fullPath = `${path}.${ext}`
     const { error } = await supabase.storage.from('frota-fotos').upload(fullPath, file, { upsert: true })
-    if (error) return null
+    if (error) throw new Error(`Falha no upload da imagem: ${error.message}`)
     const { data } = supabase.storage.from('frota-fotos').getPublicUrl(fullPath)
     return data.publicUrl
   }
@@ -288,7 +288,7 @@ export default function CadastrosPage() {
           const newUrls: string[] = []
           for (let i = 0; i < vFotos.length; i++) {
             const url = await uploadFoto(vFotos[i], `${userId}/veiculos/${data.id}/${Date.now()}_${i}`)
-            if (url) newUrls.push(url)
+            newUrls.push(url)
           }
           const allFotos = [...vExistingFotos, ...newUrls]
           if (newUrls.length > 0 || (recordId && vExistingFotos.length !== (data.fotos ?? []).length)) {
@@ -318,7 +318,7 @@ export default function CadastrosPage() {
         if (!error && data) {
           if (eFoto.length > 0) {
             const url = await uploadFoto(eFoto[0], `${userId}/equipamentos/${data.id}/foto`)
-            if (url) await supabase.from('equipamentos').update({ foto_url: url }).eq('id', data.id)
+            await supabase.from('equipamentos').update({ foto_url: url }).eq('id', data.id)
           } else if (recordId && eExistingFotoUrl === null) {
             await supabase.from('equipamentos').update({ foto_url: null }).eq('id', data.id)
           }
@@ -346,7 +346,7 @@ export default function CadastrosPage() {
         if (!error && data) {
           if (mFoto.length > 0) {
             const url = await uploadFoto(mFoto[0], `${userId}/motoristas/${data.id}/foto`)
-            if (url) await supabase.from('motoristas').update({ foto_url: url }).eq('id', data.id)
+            await supabase.from('motoristas').update({ foto_url: url }).eq('id', data.id)
           } else if (recordId && mExistingFotoUrl === null) {
             await supabase.from('motoristas').update({ foto_url: null }).eq('id', data.id)
           }
@@ -358,6 +358,8 @@ export default function CadastrosPage() {
           setSaveError(error?.message ?? 'Erro ao salvar. Tente novamente.')
         }
       }
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Erro inesperado. Tente novamente.')
     } finally {
       setSaving(false)
     }
