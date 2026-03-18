@@ -36,7 +36,12 @@ CREATE TABLE IF NOT EXISTS public.veiculos (
   tipo TEXT NOT NULL,
   placa TEXT NOT NULL,
   ano INTEGER,
+  modelo TEXT,
+  cor TEXT,
+  renavam TEXT,
   valor_veiculo NUMERIC,
+  crlv_venc DATE,
+  seguro_venc DATE,
   fotos TEXT[],
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -48,6 +53,10 @@ CREATE TABLE IF NOT EXISTS public.equipamentos (
   tipo TEXT NOT NULL,
   placa TEXT,
   ano INTEGER,
+  foto_url TEXT,
+  crlv_venc DATE,
+  capacidade NUMERIC,
+  tara NUMERIC,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -57,6 +66,9 @@ CREATE TABLE IF NOT EXISTS public.motoristas (
   agregado_id UUID REFERENCES public.agregados(id) ON DELETE CASCADE,
   nome TEXT NOT NULL,
   cnh TEXT,
+  cnh_categoria TEXT,
+  cnh_venc DATE,
+  telefone TEXT,
   foto_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
