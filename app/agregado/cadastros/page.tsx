@@ -141,6 +141,8 @@ export default function CadastrosPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState('')
   const [editingId, setEditingId]   = useState<string | null>(null)
+  const [saveError, setSaveError]   = useState('')
+  const [deleteError, setDeleteError] = useState('')
 
   // existing photo URLs preserved during edit
   const [vExistingFotos,    setVExistingFotos]    = useState<string[]>([])
@@ -216,10 +218,11 @@ export default function CadastrosPage() {
     setVExistingFotos([]); setEExistingFotoUrl(null); setMExistingFotoUrl(null)
   }
 
-  function openModal() { resetForms(); setEditingId(null); setModalOpen(true) }
+  function openModal() { resetForms(); setEditingId(null); setSaveError(''); setModalOpen(true) }
 
   function openEditVeiculo(v: Veiculo) {
     resetForms()
+    setSaveError('')
     setEditingId(v.id)
     setVTipo(v.tipo); setVPlaca(v.placa); setVAno(v.ano?.toString() ?? '')
     setVModelo(v.modelo ?? ''); setVCor(v.cor ?? '')
@@ -231,6 +234,7 @@ export default function CadastrosPage() {
 
   function openEditEquipamento(e: Equipamento) {
     resetForms()
+    setSaveError('')
     setEditingId(e.id)
     setETipo(e.tipo); setEPlaca(e.placa ?? ''); setEAno(e.ano?.toString() ?? '')
     setECapacidade(e.capacidade ?? ''); setETara(e.tara?.toString() ?? '')
@@ -240,6 +244,7 @@ export default function CadastrosPage() {
 
   function openEditMotorista(m: Motorista) {
     resetForms()
+    setSaveError('')
     setEditingId(m.id)
     setMNome(m.nome); setMTelefone(m.telefone ?? ''); setMCnh(m.cnh ?? '')
     setMCnhCategoria(m.cnh_categoria ?? ''); setMCnhVenc(m.cnh_venc ?? '')
@@ -293,6 +298,8 @@ export default function CadastrosPage() {
           setModalOpen(false)
           setSuccessMsg(recordId ? 'Veículo atualizado com sucesso!' : 'Veículo cadastrado com sucesso!')
           setTimeout(() => setSuccessMsg(''), 4000)
+        } else {
+          setSaveError(error?.message ?? 'Erro ao salvar. Tente novamente.')
         }
 
       } else if (activeTab === 'equipamentos') {
@@ -319,6 +326,8 @@ export default function CadastrosPage() {
           setModalOpen(false)
           setSuccessMsg(recordId ? 'Equipamento atualizado com sucesso!' : 'Equipamento cadastrado com sucesso!')
           setTimeout(() => setSuccessMsg(''), 4000)
+        } else {
+          setSaveError(error?.message ?? 'Erro ao salvar. Tente novamente.')
         }
 
       } else {
@@ -345,6 +354,8 @@ export default function CadastrosPage() {
           setModalOpen(false)
           setSuccessMsg(recordId ? 'Motorista atualizado com sucesso!' : 'Motorista cadastrado com sucesso!')
           setTimeout(() => setSuccessMsg(''), 4000)
+        } else {
+          setSaveError(error?.message ?? 'Erro ao salvar. Tente novamente.')
         }
       }
     } finally {
@@ -353,20 +364,26 @@ export default function CadastrosPage() {
   }
 
   // ── Delete ────────────────────────────────────────────────────────────────
-  async function handleDelete(id: string) {
+  async function handleDelete(id: string, tab: Tab) {
     if (!userId || !confirm('Excluir este cadastro?')) return
+    setDeleteError('')
     setDeletingId(id)
     try {
-      if (activeTab === 'veiculos') {
-        await supabase.from('veiculos').delete().eq('id', id)
-        await fetchVeiculos(userId)
-      } else if (activeTab === 'equipamentos') {
-        await supabase.from('equipamentos').delete().eq('id', id)
-        await fetchEquipamentos(userId)
+      let err
+      if (tab === 'veiculos') {
+        const { error } = await supabase.from('veiculos').delete().eq('id', id)
+        err = error
+        if (!error) await fetchVeiculos(userId)
+      } else if (tab === 'equipamentos') {
+        const { error } = await supabase.from('equipamentos').delete().eq('id', id)
+        err = error
+        if (!error) await fetchEquipamentos(userId)
       } else {
-        await supabase.from('motoristas').delete().eq('id', id)
-        await fetchMotoristas(userId)
+        const { error } = await supabase.from('motoristas').delete().eq('id', id)
+        err = error
+        if (!error) await fetchMotoristas(userId)
       }
+      if (err) setDeleteError('Erro ao excluir. Tente novamente.')
     } finally {
       setDeletingId(null)
     }
@@ -404,6 +421,14 @@ export default function CadastrosPage() {
         <div className="flex items-center gap-2 bg-success-light border border-success/20 text-success text-sm rounded-lg px-4 py-3 mb-4">
           <CheckCircle2 size={16} />
           {successMsg}
+        </div>
+      )}
+
+      {/* Delete error */}
+      {deleteError && (
+        <div className="flex items-center gap-2 bg-danger-light border border-danger/20 text-danger text-sm rounded-lg px-4 py-3 mb-4">
+          <AlertTriangle size={16} />
+          {deleteError}
         </div>
       )}
 
@@ -466,7 +491,7 @@ export default function CadastrosPage() {
                               <Pencil size={15} />
                             </button>
                             <button
-                              onClick={() => handleDelete(v.id)}
+                              onClick={() => handleDelete(v.id, 'veiculos')}
                               disabled={deletingId === v.id}
                               className="p-1.5 rounded-lg hover:bg-danger-light text-text-muted hover:text-danger transition-colors disabled:opacity-50"
                             >
@@ -540,7 +565,7 @@ export default function CadastrosPage() {
                               <Pencil size={15} />
                             </button>
                             <button
-                              onClick={() => handleDelete(e.id)}
+                              onClick={() => handleDelete(e.id, 'equipamentos')}
                               disabled={deletingId === e.id}
                               className="p-1.5 rounded-lg hover:bg-danger-light text-text-muted hover:text-danger transition-colors disabled:opacity-50"
                             >
@@ -602,7 +627,7 @@ export default function CadastrosPage() {
                               <Pencil size={15} />
                             </button>
                             <button
-                              onClick={() => handleDelete(m.id)}
+                              onClick={() => handleDelete(m.id, 'motoristas')}
                               disabled={deletingId === m.id}
                               className="p-1.5 rounded-lg hover:bg-danger-light text-text-muted hover:text-danger transition-colors disabled:opacity-50"
                             >
@@ -925,6 +950,14 @@ export default function CadastrosPage() {
                 )}
               </div>
             </>
+          )}
+
+          {/* Save error */}
+          {saveError && (
+            <div className="flex items-center gap-2 bg-danger-light border border-danger/20 text-danger text-sm rounded-lg px-3 py-2">
+              <AlertTriangle size={15} />
+              {saveError}
+            </div>
           )}
 
           {/* Footer */}
