@@ -38,6 +38,11 @@ CREATE TABLE IF NOT EXISTS public.veiculos (
   ano INTEGER,
   valor_veiculo NUMERIC,
   fotos TEXT[],
+  modelo TEXT,
+  cor TEXT,
+  renavam TEXT,
+  crlv_venc DATE,
+  seguro_venc DATE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -48,6 +53,10 @@ CREATE TABLE IF NOT EXISTS public.equipamentos (
   tipo TEXT NOT NULL,
   placa TEXT,
   ano INTEGER,
+  foto_url TEXT,
+  crlv_venc DATE,
+  capacidade TEXT,
+  tara NUMERIC,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -58,6 +67,9 @@ CREATE TABLE IF NOT EXISTS public.motoristas (
   nome TEXT NOT NULL,
   cnh TEXT,
   foto_url TEXT,
+  cnh_categoria TEXT,
+  cnh_venc DATE,
+  telefone TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
